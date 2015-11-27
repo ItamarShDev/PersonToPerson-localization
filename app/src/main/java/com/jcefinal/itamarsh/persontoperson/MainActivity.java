@@ -1,19 +1,36 @@
 package com.jcefinal.itamarsh.persontoperson;
 
+import android.content.Context;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
 
 public class MainActivity extends AppCompatActivity {
-    Button contacts;
+    private Button contactsButton;
+    private Intent intent;
+    private Context context;
+    private DAL dal;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        contacts = (Button)findViewById(R.id.button);
+        contactsButton = (Button)findViewById(R.id.button);
+        context = getApplicationContext();
+        dal = new DAL(this);
+        for (int i=0;i<20;i++){
+            dal.addIDEntry(Integer.toString(i));
+        }
+        contactsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                intent = new Intent(context, ContactsActivity.class);
+                startActivity(intent);
+            }
+        });
     }
 
     @Override
@@ -22,10 +39,6 @@ public class MainActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.menu_main, menu);
 
         return true;
-    }
-    public void onContactsClick(){
-        Intent intent = new Intent(this, ContactsActivity.class);
-        startActivity(intent);
     }
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -42,3 +55,16 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 }
+/*
+private Cursor cursor;
+    private DAL dal;
+    private SimpleCursorAdapter cursorAdapter;
+
+
+ String[] entries = new String[] {Contacts.ContactsTable.userName};
+        int [] viewsID = new int[] {R.id.userNameTextView};
+
+        cursor = dal.getAllTimeEntriesCursor();
+        cursorAdapter = new SimpleCursorAdapter(this, R.layout.contact, cursor, entries, viewsID, 0);
+        cursorListView.setAdapter(cursorAdapter);
+ */

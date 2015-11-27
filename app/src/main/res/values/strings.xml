@@ -95,4 +95,5 @@
     </string>
     <string name="userName" />
     <string name="contacts_page_button">Contacts</string>
+    <string name="title_activity_second">SecondActivity</string>
 </resources>

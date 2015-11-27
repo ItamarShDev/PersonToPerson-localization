@@ -1,5 +1,7 @@
 package com.jcefinal.itamarsh.persontoperson;
 
+import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.provider.ContactsContract;
@@ -10,6 +12,10 @@ import android.provider.ContactsContract;
 public class DAL {
     private SQLiteDatabase db;
     private ContactsDBHelper cdh;
+    public DAL(Context context)
+    {
+        cdh = new ContactsDBHelper(context);
+    }
     public Cursor getAllTimeEntriesCursor()
     {
         //get db
@@ -17,6 +23,15 @@ public class DAL {
         //get data
         Cursor cursor = db.rawQuery("SELECT * FROM " + Contacts.ContactsTable.TABLE_NAME, null);
         return cursor;
+
+    }
+    public void addIDEntry(String id)
+    {
+        db = cdh.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(Contacts.ContactsTable.userID, id);
+        db.insert(Contacts.ContactsTable.TABLE_NAME, null, values);
+        db.close();
 
     }
 }
