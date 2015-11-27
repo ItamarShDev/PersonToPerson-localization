@@ -96,4 +96,6 @@
     <string name="userName" />
     <string name="contacts_page_button">Contacts</string>
     <string name="title_activity_second">SecondActivity</string>
+    <string name="title_activity_main_screen">MainScreenActivity</string>
+    <string name="section_format">Hello World from section: %1$d</string>
 </resources>

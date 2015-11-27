@@ -9,7 +9,6 @@
         android:theme="@style/AppTheme">
         <activity
             android:name=".MainActivity"
-
             android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -19,11 +18,16 @@
         </activity>
         <activity
             android:name=".ContactsActivity"
-            android:exported="true"></activity>
+            android:exported="true" />
         <activity
             android:name=".SecondActivity"
             android:label="@string/title_activity_second"
-            android:theme="@style/AppTheme.NoActionBar"></activity>
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name=".MainScreenActivity"
+            android:label="@string/title_activity_main_screen"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:exported="true"></activity>
     </application>
 
 </manifest>
