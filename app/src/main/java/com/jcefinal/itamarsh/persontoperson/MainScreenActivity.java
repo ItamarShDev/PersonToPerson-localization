@@ -1,13 +1,14 @@
 package com.jcefinal.itamarsh.persontoperson;
 
-import android.annotation.TargetApi;
-import android.app.ActionBar;
+import android.app.Dialog;
+import android.app.DialogFragment;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.database.Cursor;
-import android.graphics.Color;
-import android.os.Build;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -26,15 +27,17 @@ import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.ScaleAnimation;
+import android.widget.AdapterView;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
-import android.widget.TableLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainScreenActivity extends AppCompatActivity {
+public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener{
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -51,7 +54,7 @@ public class MainScreenActivity extends AppCompatActivity {
     public int[] iconIntArray = {R.drawable.ic_add_white_24dp,R.drawable.ic_stop_white_24dp};
     private FloatingActionButton fab;
     private Toolbar toolbar;
-
+    private String message = "Add Contact";
     /**
      * The {@link ViewPager} that will host the section contents.
      */
@@ -74,21 +77,18 @@ public class MainScreenActivity extends AppCompatActivity {
         mViewPager.setAdapter(mSectionsPagerAdapter);
         //FLOATING BUTTON
         fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setBackgroundColor(getResources().getColor(R.color.blue));
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Just Playing", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+
+        fab.setOnLongClickListener(this);
+        fab.setOnClickListener(this);
 
         tab = (TabLayout) findViewById(R.id.tabs);
         tab.setupWithViewPager(mViewPager);
+
         tab.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 mViewPager.setCurrentItem(tab.getPosition());
+                setMessage(tab.getPosition());
                 animateFab(tab.getPosition());
             }
 
@@ -103,11 +103,37 @@ public class MainScreenActivity extends AppCompatActivity {
             }
         });
 
-
-
-
     }
 
+    private void setMessage(final int loc){
+
+        switch (loc){
+            case 0:
+                message = "Add Contact";
+                break;
+            case 1:
+                message = "Stop the Search";
+                break;
+        }
+    }
+    @Override
+    public void onClick(View view) {
+        switch (mViewPager.getCurrentItem()){
+            case 0:
+                AddContactDialogFragment alert= new AddContactDialogFragment();
+                alert.show(getFragmentManager(),null);
+                break;
+            case 1:
+            //stop the scan
+                break;
+        }
+    }
+    @Override
+    public boolean onLongClick(View v){
+        Snackbar.make(v, message, Snackbar.LENGTH_SHORT)
+                .setAction("Action", null).show();
+        return true;
+    }
     protected void animateFab(final int position) {
         fab.clearAnimation();
         // Scale down animation
@@ -168,15 +194,17 @@ public class MainScreenActivity extends AppCompatActivity {
      * A placeholder fragment containing a simple view.
      */
     //the activities themselves
-    public static class PlaceholderFragment extends Fragment {
+    public static class PlaceholderFragment extends Fragment implements View.OnClickListener, View.OnLongClickListener{
         /**
          * The fragment argument representing the section number for this
          * fragment.
          */
+        private Context contex;
         private Cursor cursor;
         private DAL dal;
         private SimpleCursorAdapter cursorAdapter;
         private static final String ARG_SECTION_NUMBER = "section_number";
+        private ListView cursorListView;
 
         public PlaceholderFragment() {
         }
@@ -198,14 +226,23 @@ public class MainScreenActivity extends AppCompatActivity {
                                  Bundle savedInstanceState) {
             View rootView;
             if(getArguments().getInt(ARG_SECTION_NUMBER)==1){
-                rootView = inflater.inflate(R.layout.content_contacts, container, false);
-                ListView cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
-                dal = new DAL(this.getActivity());
-                String[] entries = new String[] {Contacts.ContactsTable.userID};
-                int [] viewsID = new int[] {R.id.userNameTextView};
+                rootView = inflater.inflate(R.layout.activity_contacts, container, false);
+                cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
+                dal = new DAL(container.getContext());
+                contex = this.getActivity();
+                String[] entries = new String[] {Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum,Contacts.ContactsTable.userID};
+                int [] viewsID = new int[] {R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
                 cursor = dal.getAllTimeEntriesCursor();
-                cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, 0);
+                cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
                 cursorListView.setAdapter(cursorAdapter);
+                cursorListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        Toast.makeText(contex, "test + " + position, Toast.LENGTH_SHORT).show();
+
+
+                    }
+                });
                 return rootView;
 
             }
@@ -220,6 +257,15 @@ public class MainScreenActivity extends AppCompatActivity {
                 return rootView;
 
             }
+        }
+
+        @Override
+        public void onClick(View v) {
+        }
+
+        @Override
+        public boolean onLongClick(View v) {
+            return false;
         }
     }
 
@@ -259,10 +305,11 @@ public class MainScreenActivity extends AppCompatActivity {
                     return "Contacts";
                 case 1:
                     return "Search";
-//                case 2:
-//                    return "SECTION 3";
             }
             return null;
         }
     }
+
 }
+
+

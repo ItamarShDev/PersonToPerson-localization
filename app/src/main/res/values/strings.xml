@@ -1,6 +1,12 @@
 <resources>
     <string name="app_name">PersonToPerson</string>
-
+    <string name="add_contact_message">Add Contact</string>
+    <string name="add_contact_title">Add New Contact</string>
+    <string name="phone">Phone Number</string>
+    <string name="add_contact_name">Name</string>
+    <string name="cancel">Cancel</string>
+    <string name="add_button">Add</string>
+    <string name="stop_searching">Stop the Search</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
     <string name="title_activity_contacts">ContactsActivity</string>

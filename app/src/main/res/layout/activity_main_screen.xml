@@ -20,8 +20,6 @@
             android:layout_height="?attr/actionBarSize"
             android:background="#3F51B5"
             app:popupTheme="@style/AppTheme.PopupOverlay">
-<!--            app:layout_scrollFlags="scroll|enterAlways"
--->
         </android.support.v7.widget.Toolbar>
         <android.support.design.widget.TabLayout
             android:id="@+id/tabs"

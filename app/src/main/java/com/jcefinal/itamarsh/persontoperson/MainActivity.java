@@ -21,9 +21,6 @@ public class MainActivity extends AppCompatActivity {
         contactsButton = (Button)findViewById(R.id.button);
         context = getApplicationContext();
         dal = new DAL(this);
-        for (int i=0;i<20;i++){
-            dal.addIDEntry(Integer.toString(i));
-        }
         contactsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

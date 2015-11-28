@@ -1,19 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:clickable="true">
 
     <ImageButton
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
         android:id="@+id/ContactImageButton"
         android:layout_gravity="center_vertical"
-        android:src="#f20a0a" />
+        android:src="@drawable/ic_perm_contact_calendar_black_36dp"
+        android:contentDescription="@string/large_text"
+        android:layout_alignBottom="@+id/userNameTextView"
+        android:layout_alignParentStart="true" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="@string/userName"
-        android:id="@+id/userNameTextView" />
-</LinearLayout>
+        android:id="@+id/userNameTextView"
+        android:layout_toEndOf="@+id/ContactImageButton"
+        android:textAlignment="viewStart"
+        android:layout_alignParentEnd="true" />
+    <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="@string/phone"
+        android:id="@+id/userPhoneTextView"
+        android:layout_alignTop="@+id/userIdTextView"
+        android:textColor="#bfbebe"
+        android:layout_toEndOf="@+id/userIdTextView"
+        android:layout_alignParentEnd="true"
+        android:textAlignment="viewEnd" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="ID"
+        android:id="@+id/userIdTextView"
+        android:layout_below="@+id/ContactImageButton"
+        android:layout_alignParentStart="true"
+        android:layout_toStartOf="@+id/userNameTextView" />
+</RelativeLayout>

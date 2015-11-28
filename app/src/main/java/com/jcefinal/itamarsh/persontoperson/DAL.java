@@ -21,7 +21,7 @@ public class DAL {
         //get db
         db = cdh.getReadableDatabase();
         //get data
-        Cursor cursor = db.rawQuery("SELECT * FROM " + Contacts.ContactsTable.TABLE_NAME, null);
+        Cursor cursor = db.rawQuery("SELECT * FROM " + Contacts.ContactsTable.TABLE_NAME, new String[] {});
         return cursor;
 
     }
@@ -30,6 +30,16 @@ public class DAL {
         db = cdh.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(Contacts.ContactsTable.userID, id);
+        db.insert(Contacts.ContactsTable.TABLE_NAME, null, values);
+        db.close();
+
+    }
+    public void addEntries(String name,String phone)
+    {
+        db = cdh.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(Contacts.ContactsTable.userName, name);
+        values.put(Contacts.ContactsTable.phoneNum, phone);
         db.insert(Contacts.ContactsTable.TABLE_NAME, null, values);
         db.close();
 

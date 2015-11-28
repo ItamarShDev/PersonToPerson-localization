@@ -16,16 +16,27 @@ public static final String DB_NAME = "contacts.db";
         }
         @Override
         public void onCreate(SQLiteDatabase db) {
-            db.execSQL("CREATE TABLE " + Contacts.ContactsTable.TABLE_NAME + "(" + Contacts.ContactsTable._ID +
-                    " INTEGER PRIMARY KEY AUTOINCREMENT,"+ Contacts.ContactsTable.userID + " TEXT" + ");");
+            db.execSQL("CREATE TABLE " + Contacts.ContactsTable.TABLE_NAME + " (" + Contacts.ContactsTable._ID +
+                    " INTEGER PRIMARY KEY AUTOINCREMENT," + Contacts.ContactsTable.userID + " TEXT, "
+                    + Contacts.ContactsTable.userName + " TEXT, "
+                    + Contacts.ContactsTable.phoneNum + " TEXT "
+                    + ");");
 
         }
-
+        public void addColumnToTable(SQLiteDatabase db, String name){
+            db.execSQL("ALTER TABLE " + Contacts.ContactsTable.TABLE_NAME
+            +" ADD " + name);
+        }
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-            db.execSQL("DROP TABLE IF EXIST " + Contacts.ContactsTable.TABLE_NAME);
+            db.execSQL("DROP TABLE IF EXISTS " + Contacts.ContactsTable.TABLE_NAME);
             onCreate(db);
 
         }
 
+    @Override
+    public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS " + Contacts.ContactsTable.TABLE_NAME);
+        onCreate(db);
+    }
 }
