@@ -15,7 +15,19 @@ import android.widget.EditText;
 public class AddContactDialogFragment extends DialogFragment {
 
     private DAL dal;
+    private DialogInterface.OnDismissListener onDismissListener;
 
+    public void setOnDismissListener(DialogInterface.OnDismissListener onDismissListener) {
+        this.onDismissListener = onDismissListener;
+    }
+
+    @Override
+    public void onDismiss(DialogInterface dialog) {
+        super.onDismiss(dialog);
+        if (onDismissListener != null) {
+            onDismissListener.onDismiss(dialog);
+        }
+    }
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         // Use the Builder class for convenient dialog construction
@@ -29,6 +41,7 @@ public class AddContactDialogFragment extends DialogFragment {
                 .setPositiveButton(R.string.add_button, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dal.addEntries(mName.getText().toString(), mPhone.getText().toString());
+
                     }
                 })
                 .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {

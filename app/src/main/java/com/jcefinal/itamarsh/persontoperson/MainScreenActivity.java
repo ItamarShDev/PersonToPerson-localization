@@ -117,17 +117,24 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
     }
     @Override
-    public void onClick(View view) {
+    public void onClick(final View view) {
         switch (mViewPager.getCurrentItem()){
             case 0:
                 AddContactDialogFragment alert= new AddContactDialogFragment();
-                alert.show(getFragmentManager(),null);
+                alert.show(getFragmentManager(), null);
+                AddContactDialogFragment d = new AddContactDialogFragment();
+                d.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialog) {
+                  }
+                });
                 break;
             case 1:
             //stop the scan
                 break;
         }
     }
+
     @Override
     public boolean onLongClick(View v){
         Snackbar.make(v, message, Snackbar.LENGTH_SHORT)
@@ -205,7 +212,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         private SimpleCursorAdapter cursorAdapter;
         private static final String ARG_SECTION_NUMBER = "section_number";
         private ListView cursorListView;
+        private ViewGroup container;
+        private View rootView;
 
+        private String[] entries = new String[] {Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum,Contacts.ContactsTable.userID};
+        private int [] viewsID = new int[] {R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
         public PlaceholderFragment() {
         }
 
@@ -224,23 +235,20 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState) {
-            View rootView;
+            this.container = container;
             if(getArguments().getInt(ARG_SECTION_NUMBER)==1){
                 rootView = inflater.inflate(R.layout.activity_contacts, container, false);
                 cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
                 dal = new DAL(container.getContext());
                 contex = this.getActivity();
-                String[] entries = new String[] {Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum,Contacts.ContactsTable.userID};
-                int [] viewsID = new int[] {R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
+
                 cursor = dal.getAllTimeEntriesCursor();
                 cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
                 cursorListView.setAdapter(cursorAdapter);
                 cursorListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                     @Override
                     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        Toast.makeText(contex, "test + " + position, Toast.LENGTH_SHORT).show();
-
-
+                        Toast.makeText(rootView.getContext(), "test + " + position, Toast.LENGTH_SHORT).show();
                     }
                 });
                 return rootView;
@@ -257,6 +265,32 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 return rootView;
 
             }
+        }
+
+        @Override
+        public void onStart() {
+            super.onStart();
+        }
+
+        @Override
+        public void onResume() {
+            super.onResume();
+            if(cursorListView==null)
+                rootView = getLayoutInflater(null).inflate(R.layout.activity_contacts,this.container , false);
+            cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
+
+            dal = new DAL(this.getContext());
+            contex = this.getActivity();
+            cursor = dal.getAllTimeEntriesCursor();
+            cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
+            cursorListView.setAdapter(cursorAdapter);
+
+        }
+
+        @Override
+        public void onViewCreated(View view, Bundle savedInstanceState) {
+            super.onViewCreated(view, savedInstanceState);
+
         }
 
         @Override
