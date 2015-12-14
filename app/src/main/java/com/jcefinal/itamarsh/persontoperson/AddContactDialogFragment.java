@@ -2,8 +2,10 @@ package com.jcefinal.itamarsh.persontoperson;
 
 import android.app.Dialog;
 import android.app.DialogFragment;
+import android.app.Fragment;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -53,4 +55,5 @@ public class AddContactDialogFragment extends DialogFragment {
         // Create the AlertDialog object and return it
         return builder.create();
     }
+
 }
