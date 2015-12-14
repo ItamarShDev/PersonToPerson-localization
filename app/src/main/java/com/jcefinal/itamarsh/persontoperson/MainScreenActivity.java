@@ -249,6 +249,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     @Override
                     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                         Toast.makeText(rootView.getContext(), "test + " + position, Toast.LENGTH_SHORT).show();
+                        Snackbar.make(view, "test",Snackbar.LENGTH_SHORT)
+                                .setAction("Action", null).show();
+
                     }
                 });
                 return rootView;

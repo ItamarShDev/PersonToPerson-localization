@@ -10,11 +10,6 @@
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
         <activity
             android:name=".ContactsActivity"
@@ -25,9 +20,15 @@
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".MainScreenActivity"
-            android:label="@string/title_activity_main_screen"
+            android:label="@string/app_name"
             android:theme="@style/AppTheme.NoActionBar"
-            android:exported="true"></activity>
+
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
