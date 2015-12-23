@@ -16,6 +16,7 @@ import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -25,6 +26,7 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -46,7 +48,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener {
+public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, ContactsInterface {
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -68,6 +70,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private TextView m;
     private LocationManager locationManager;
     private LocationListener locationListener;
+    private DAL dal;
+    private  ListView cursorListView;
     /**
      * The {@link ViewPager} that will host the section contents.
      */
@@ -77,24 +81,23 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_screen);
+        initViews();
         play = false;
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        mViewPager = (ViewPager) findViewById(R.id.container);
+
+        dal = new DAL(this);
+
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
-
         mSectionsPagerAdapter.addFragment(new PlaceholderFragment());
         mSectionsPagerAdapter.addFragment(new PlaceholderFragment());
         // Set up the ViewPager with the sections adapter.
         mViewPager.setAdapter(mSectionsPagerAdapter);
-        //FLOATING BUTTON
-        fab = (FloatingActionButton) findViewById(R.id.fab);
 
+        //FLOATING BUTTON
         fab.setOnLongClickListener(this);
         fab.setOnClickListener(this);
-        tab = (TabLayout) findViewById(R.id.tabs);
         tab.setupWithViewPager(mViewPager);
 
         tab.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -106,21 +109,14 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
 
             @Override
-            public void onTabUnselected(TabLayout.Tab tab) {
-
-            }
+            public void onTabUnselected(TabLayout.Tab tab) {}
 
             @Override
-            public void onTabReselected(TabLayout.Tab tab) {
-
-            }
+            public void onTabReselected(TabLayout.Tab tab) {}
         });
 
     }
 
-    public void updateList() {
-        mSectionsPagerAdapter.getItem(mViewPager.getCurrentItem()).onResume();
-    }
 
     private void setMessage(final int loc) {
 
@@ -141,19 +137,17 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
                 AddContactDialogFragment alert = new AddContactDialogFragment();
                 alert.show(getFragmentManager(), null);
-                AddContactDialogFragment d = new AddContactDialogFragment();
-                d.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
-                         String[] entries = new String[]{Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum, Contacts.ContactsTable.userID};
-                         int[] viewsID = new int[]{R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
-                        ListView cursorListView = (ListView)findViewById(R.id.cursorListView);
-                        DAL dal = new DAL(getApplicationContext());
-                        Cursor cursor = dal.getAllTimeEntriesCursor();
-                        SimpleCursorAdapter cursorAdapter = new SimpleCursorAdapter(getApplicationContext(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
-                        cursorListView.setAdapter(cursorAdapter);
+                        Log.e("myDebug", "dialog on dismiss");
+                        getContacts();
                     }
                 });
+
+                Log.e("myDebug", "Add button was pressed, and first tab selected");
+
+
                 break;
             case 1:
                 if (play) {
@@ -283,6 +277,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public void updateList() {
+
+    }
+
     /**
      * A placeholder fragment containing a simple view.
      */
@@ -303,7 +302,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         private TextView gps;
         private String[] entries = new String[]{Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum, Contacts.ContactsTable.userID};
         private int[] viewsID = new int[]{R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
-
+        private Context context;
         public PlaceholderFragment() {
         }
 
@@ -321,82 +320,56 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
+                                 final Bundle savedInstanceState) {
             this.container = container;
             if (getArguments().getInt(ARG_SECTION_NUMBER) == 1) {
                 rootView = inflater.inflate(R.layout.activity_contacts, container, false);
-                cursorListView = (ListView) rootView.findViewById(R.id.cursorListView);
-                dal = new DAL(container.getContext());
-                contex = this.getActivity();
-
-                cursor = dal.getAllTimeEntriesCursor();
-                cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
-                cursorListView.setAdapter(cursorAdapter);
+                updateList();
+                cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
                 cursorListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        Toast.makeText(rootView.getContext(), "test + " + position, Toast.LENGTH_SHORT).show();
-                        Snackbar.make(view, "test", Snackbar.LENGTH_SHORT)
-                                .setAction("Action", null).show();
+                  @Override
+                  public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                      Log.e("myDebug", "item in list clicked");
 
-                    }
-                });
+                  }
+              });
+                cursorAdapter = new SimpleCursorAdapter(context, R.layout.contact, cursor, entries, viewsID, 0);
+                cursorListView.setAdapter(cursorAdapter);
+                Log.e("myDebug", "on create view = 1");
                 return rootView;
 
             }
             if (getArguments().getInt(ARG_SECTION_NUMBER) == 2) {
                 rootView = inflater.inflate(R.layout.fragment_add_page, container, false);
-//                gps = (TextView) rootView.findViewById(R.id.textView);
+                Log.e("myDebug", "on create view = 2");
                 return rootView;
             } else {
                 rootView = inflater.inflate(R.layout.fragment_main_screen, container, false);
                 TextView textView = (TextView) rootView.findViewById(R.id.section_label);
                 textView.setText(getString(R.string.section_format, getArguments().getInt(ARG_SECTION_NUMBER)));
                 return rootView;
-
             }
         }
 
-
-        public void reloadList(){
-            if(cursorListView==null)
-                rootView = getLayoutInflater(null).inflate(R.layout.activity_contacts,this.container , false);
-            cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
-
-            dal = new DAL(this.getContext());
-            contex = this.getActivity();
-            cursor = dal.getAllTimeEntriesCursor();
-            cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
-            cursorListView.setAdapter(cursorAdapter);
-        }
         @Override
         public void onStart() {
             super.onStart();
-            if(cursorListView==null)
-                rootView = getLayoutInflater(null).inflate(R.layout.activity_contacts,this.container , false);
-            cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
-
-            dal = new DAL(this.getContext());
-            contex = this.getActivity();
-            cursor = dal.getAllTimeEntriesCursor();
-            cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
-            cursorListView.setAdapter(cursorAdapter);
 
         }
 
         @Override
         public void onResume() {
             super.onResume();
-            if(cursorListView==null)
-                rootView = getLayoutInflater(null).inflate(R.layout.activity_contacts,this.container , false);
+        }
+
+        private void updateList()
+        {
             cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
-
             dal = new DAL(this.getContext());
-            contex = this.getActivity();
+            context = this.getActivity();
             cursor = dal.getAllTimeEntriesCursor();
-            cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
+            cursorAdapter = new SimpleCursorAdapter(context, R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
             cursorListView.setAdapter(cursorAdapter);
-
         }
 
         @Override
@@ -454,6 +427,27 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
             return null;
         }
+    }
+
+    private void initViews()
+    {
+        mViewPager = (ViewPager) findViewById(R.id.container);
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        fab = (FloatingActionButton) findViewById(R.id.fab);
+        tab = (TabLayout) findViewById(R.id.tabs);
+        cursorListView = (ListView) findViewById(R.id.cursorListView);
+
+    }
+
+    private void getContacts()
+    {
+        cursorListView = (ListView) findViewById(R.id.cursorListView);
+        Cursor cursor = dal.getAllTimeEntriesCursor();
+        String[] entries = new String[]{Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum, Contacts.ContactsTable.userID};
+        int[] viewsID = new int[]{R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
+        SimpleCursorAdapter cursorAdapter = new SimpleCursorAdapter(getApplicationContext(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
+        cursorListView.setAdapter(cursorAdapter);
+
     }
 
 }
