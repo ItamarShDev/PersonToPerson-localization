@@ -1,22 +1,20 @@
 package com.jcefinal.itamarsh.persontoperson;
 
-import android.Manifest;
-import android.app.Dialog;
-import android.app.DialogFragment;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.pm.PackageManager;
+import android.content.Intent;
 import android.database.Cursor;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.wifi.WifiManager;
+import android.os.PowerManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentActivity;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -36,15 +34,15 @@ import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.ScaleAnimation;
 import android.widget.AdapterView;
-import android.widget.EditText;
+import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener {
 
@@ -68,6 +66,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private TextView m;
     private LocationManager locationManager;
     private LocationListener locationListener;
+    private BluetoothAdapter btAdapter;
+    private final static int REQUEST_ENABLE_BT = 1;
+
+
     /**
      * The {@link ViewPager} that will host the section contents.
      */
@@ -172,9 +174,57 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     m = (TextView)findViewById(R.id.textView);
                     m.setText("looking for location...");
                     gpsLookout();
+                    blueTooth();
+                    //wifi();
                     play = true;
                 }
                 break;
+        }
+    }
+    private void wifi(){
+        getSystemService(Context.WIFI_SERVICE);
+        PowerManager _powerManagement = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        PowerManager.WakeLock _wakeLock =_powerManagement.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,"0 Backup power lock");;
+        _wakeLock.acquire();
+        WifiManager.WifiLock _wifiLock;
+        WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        if (wifiManager != null) {
+            _wifiLock = wifiManager.createWifiLock("0 Backup wifi lock");
+            _wifiLock.acquire();
+        }
+    }
+    private void blueTooth(){
+        btAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (btAdapter==null)
+            return;
+        if (!btAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+        }
+        else{
+            TextView btTV = (TextView)findViewById(R.id.textView3);
+            btTV.setText("BlueTooth Enabled");
+        }
+    }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+        ListView btLV = (ListView)findViewById(R.id.btListView);
+        String[] btEntries;
+        int[] btViewsID = new int[]{R.id.textView2};
+        if(resultCode==RESULT_OK){
+            TextView btTV = (TextView)findViewById(R.id.textView3);
+            btTV.setText("BlueTooth Enabled");
+            ArrayAdapter<String> mArrayAdapter = new ArrayAdapter<String>(this, R.layout.bt_list);
+            Set<BluetoothDevice> pairedDevices = btAdapter.getBondedDevices();
+// If there are paired devices
+            if (pairedDevices.size() > 0) {
+                // Loop through paired devices
+                for (BluetoothDevice device : pairedDevices) {
+                    // Add the name and address to an array adapter to show in a ListView
+                    btEntries = new String[]{device.getName()};
+//                    mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+                }
+            }
         }
     }
     private void gpsLookout() {
@@ -203,7 +253,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         };
 
 // Register the listener with the Location Manager to receive location updates
-        LocationSettings l = new LocationSettings(this, new LocationSettings.OnPermissionListener() {
+        PermissionSettings l = new PermissionSettings(this, new PermissionSettings.OnPermissionListener() {
             @Override
             public void OnPermissionChanged(boolean permissionGranted) {
                 if (permissionGranted) {

@@ -7,7 +7,7 @@ import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.support.v4.app.ActivityCompat;
 
-public class LocationSettings {
+public class PermissionSettings {
 
         private Activity mActivity;
         private final int PERMISSION_REQUEST = 0;
@@ -17,7 +17,7 @@ public class LocationSettings {
             void OnPermissionChanged(boolean permissionGranted);
         }
 
-        public LocationSettings(Activity activity, OnPermissionListener onPermissionListener) {
+        public PermissionSettings(Activity activity, OnPermissionListener onPermissionListener) {
             mActivity = activity;
             setOnPermissionListener(onPermissionListener);
             if (ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_FINE_LOCATION)
