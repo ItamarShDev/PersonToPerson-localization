@@ -1,9 +1,8 @@
-
 package com.jcefinal.itamarsh.persontoperson;
 
+import android.app.IntentService;
 import android.content.Context;
-import android.os.AsyncTask;
-import android.os.Bundle;
+import android.content.Intent;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -16,74 +15,43 @@ import com.android.volley.toolbox.Volley;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 import com.google.android.gms.iid.InstanceID;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-
-class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
-    //private static Registration regService = null;
+/**
+ * Created by olesya on 29-Dec-15.
+ */
+public class GcmRegistrationIntent extends IntentService{
     private GoogleCloudMessaging gcm;
     private Context context;
-    private static final String TAG ="myDebug";
-    private static final String SENDER_ID = "186698592995";
     private static final String PROJECT_ID = "p2p-gcm-server";
-    private String token;
+    private static final String TAG = "myDebug";
     private RequestQueue queue;
+    private static final String SENDER_ID = "186698592995";
 
-    public GcmRegistrationAsyncTask(Context context) {
+
+    public GcmRegistrationIntent() {
+        super("GcmRegistrationIntent");
+    }
+
+    public GcmRegistrationIntent( Context context)
+    {
+        super("GcmRegistrationIntent");
         this.context = context;
     }
 
-    @Override
-    protected String doInBackground(Void... params) {
-        Log.d(TAG,"Running");
+    public void register() {
         String authorizedEntity = PROJECT_ID; // Project id from Google Developer Console
-        token = "";
-
+        String token = "";
         String scope = "GCM";
-        String msg = "";
+        String server_addr = "p2p-gcm-server.appspot.com/register";
         try {
-            if (gcm == null) {
-                gcm = GoogleCloudMessaging.getInstance(context);
-            }
             token = InstanceID.getInstance(context).getToken(authorizedEntity, scope);
             Log.i(TAG, "GCM Registration Token: " + token);
-
-            registerToServer();
-            msg = "Device registered, registration ID=" + token;
-
-        } catch (IOException ex) {
-            Log.d(TAG, "Failed to complete token refresh", ex);
-            ex.printStackTrace();
-            msg = "Error: " + ex.getMessage();
+        } catch (Exception e) {
+            Log.d(TAG, "Failed to complete token refresh", e);
         }
-        return msg;
-    }
-
-    @Override
-    protected void onPostExecute(String msg) {
-        Toast.makeText(context, msg, Toast.LENGTH_LONG).show();
-        Log.i(TAG, "in post execute");
-        Logger.getLogger("REGISTRATION").log(Level.INFO, msg);
-        Bundle data = new Bundle();
-        data.putString("my_message", "G2 say hello!");
-        data.putString("my_action", "SAY_HELLO");
-        try {
-            gcm.send(SENDER_ID + "@gcm.googleapis.com", "2212", data);
-            Log.d(TAG, "sent message");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void registerToServer()
-    {
-        String server_addr = "http://p2p-gcm-server.appspot.com/register";
-
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("user_id", token);
@@ -107,12 +75,13 @@ class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
                     @Override
                     public void onResponse(JSONObject response) {
                         try {
-                            String res = response.getString("response");
-                            Log.i(TAG, "response is: " + res);
+                            Log.e(TAG, "got good response");
+                            JSONArray array = response.getJSONArray("value");
+
                         }
                         catch (JSONException e)
                         {
-                            Log.i(TAG,"Error on response " +  e.getMessage());
+                            Log.i(TAG, e.getMessage());
                         }
                     }
                 },
@@ -127,5 +96,11 @@ class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
         );
         request.setTag("REQUEST");
         queue.add(request);
+
+    }
+
+    @Override
+    protected void onHandleIntent(Intent intent) {
+        register();
     }
 }
