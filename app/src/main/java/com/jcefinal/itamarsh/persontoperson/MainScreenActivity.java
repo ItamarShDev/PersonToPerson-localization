@@ -33,6 +33,9 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.android.gms.gcm.GoogleCloudMessaging;
 
 import java.util.ArrayList;
 
@@ -348,6 +351,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         private Context context;
         private AlertDialog approveDialog;
         private ArrayList list;
+        private static final String SENDER_ID = "186698592995";
 
         public PlaceholderFragment() {
         }
@@ -374,7 +378,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 cursorListView = (ListView) rootView.findViewById(R.id.cursorListView);
                 cursorListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                     @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
 
                         new AlertDialog.Builder(context)
                                 //.setTitle("Are you sure?")
@@ -382,7 +386,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
                                             @Override
                                             public void onClick(DialogInterface dialog, int which) {
-
                                             }
                                         })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {

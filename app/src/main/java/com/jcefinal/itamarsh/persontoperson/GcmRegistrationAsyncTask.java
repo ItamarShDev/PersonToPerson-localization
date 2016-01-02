@@ -41,7 +41,7 @@ class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
     @Override
     protected String doInBackground(Void... params) {
         Log.d(TAG,"Running");
-        String authorizedEntity = PROJECT_ID; // Project id from Google Developer Console
+        String authorizedEntity = SENDER_ID; // Project id from Google Developer Console
         token = "";
 
         String scope = "GCM";
