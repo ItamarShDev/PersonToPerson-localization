@@ -1,58 +1,53 @@
 package com.jcefinal.itamarsh.persontoperson;
 
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.database.Cursor;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.wifi.WifiManager;
-import android.os.PowerManager;
+import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.view.ViewPager;
-import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.ScaleAnimation;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 
-public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener {
+//import com.google.android.gms.appindexing.Action;
+//import com.google.android.gms.appindexing.AppIndex;
+
+public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, ContactsInterface {
 
     /**
-     * The {@link android.support.v4.view.PagerAdapter} that will provide
+     * The {@link PagerAdapter} that will provide
      * fragments for each of the sections. We use a
      * {@link FragmentPagerAdapter} derivative, which will keep every
      * loaded fragment in memory. If this becomes too memory intensive, it
      * may be best to switch to a
-     * {@link android.support.v4.app.FragmentStatePagerAdapter}.
+     * {@link FragmentStatePagerAdapter}.
      */
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
@@ -66,37 +61,39 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private TextView m;
     private LocationManager locationManager;
     private LocationListener locationListener;
-    private BluetoothAdapter btAdapter;
-    private final static int REQUEST_ENABLE_BT = 1;
-
-
+    private DAL dal;
+    private ListView cursorListView;
+    private static final String TAG = "myDebug";
+    private GcmRegistrationIntent gcmRegistration;
     /**
      * The {@link ViewPager} that will host the section contents.
      */
     private ViewPager mViewPager;
-
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+//    private GoogleApiClient client;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_screen);
+        initViews();
         play = false;
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        mViewPager = (ViewPager) findViewById(R.id.container);
+        dal = new DAL(this);
+        new GcmRegistrationAsyncTask(this).execute();
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
-
         mSectionsPagerAdapter.addFragment(new PlaceholderFragment());
         mSectionsPagerAdapter.addFragment(new PlaceholderFragment());
         // Set up the ViewPager with the sections adapter.
         mViewPager.setAdapter(mSectionsPagerAdapter);
-        //FLOATING BUTTON
-        fab = (FloatingActionButton) findViewById(R.id.fab);
 
+        //FLOATING BUTTON
         fab.setOnLongClickListener(this);
         fab.setOnClickListener(this);
-        tab = (TabLayout) findViewById(R.id.tabs);
         tab.setupWithViewPager(mViewPager);
 
         tab.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -109,20 +106,18 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
             @Override
             public void onTabUnselected(TabLayout.Tab tab) {
-
             }
 
             @Override
             public void onTabReselected(TabLayout.Tab tab) {
-
             }
         });
 
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+//        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
-    public void updateList() {
-        mSectionsPagerAdapter.getItem(mViewPager.getCurrentItem()).onResume();
-    }
 
     private void setMessage(final int loc) {
 
@@ -143,19 +138,17 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
                 AddContactDialogFragment alert = new AddContactDialogFragment();
                 alert.show(getFragmentManager(), null);
-                AddContactDialogFragment d = new AddContactDialogFragment();
-                d.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
-                         String[] entries = new String[]{Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum, Contacts.ContactsTable.userID};
-                         int[] viewsID = new int[]{R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
-                        ListView cursorListView = (ListView)findViewById(R.id.cursorListView);
-                        DAL dal = new DAL(getApplicationContext());
-                        Cursor cursor = dal.getAllTimeEntriesCursor();
-                        SimpleCursorAdapter cursorAdapter = new SimpleCursorAdapter(getApplicationContext(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
-                        cursorListView.setAdapter(cursorAdapter);
+                        Log.e("myDebug", "dialog on dismiss");
+                        getContacts();
                     }
                 });
+
+                Log.e("myDebug", "Add button was pressed, and first tab selected");
+
+
                 break;
             case 1:
                 if (play) {
@@ -164,69 +157,22 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     try {
                         locationManager.removeUpdates(locationListener);
                         m.setText("stopped location");
-                    }catch (SecurityException s){
+                    } catch (SecurityException s) {
 
                     }
                     play = false;
                 } else {
                     fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[2]));
                     fab.setImageDrawable(getResources().getDrawable(iconIntArray[2]));
-                    m = (TextView)findViewById(R.id.textView);
+                    m = (TextView) findViewById(R.id.textView);
                     m.setText("looking for location...");
                     gpsLookout();
-                    blueTooth();
-                    //wifi();
                     play = true;
                 }
                 break;
         }
     }
-    private void wifi(){
-        getSystemService(Context.WIFI_SERVICE);
-        PowerManager _powerManagement = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        PowerManager.WakeLock _wakeLock =_powerManagement.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,"0 Backup power lock");;
-        _wakeLock.acquire();
-        WifiManager.WifiLock _wifiLock;
-        WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-        if (wifiManager != null) {
-            _wifiLock = wifiManager.createWifiLock("0 Backup wifi lock");
-            _wifiLock.acquire();
-        }
-    }
-    private void blueTooth(){
-        btAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (btAdapter==null)
-            return;
-        if (!btAdapter.isEnabled()) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-        }
-        else{
-            TextView btTV = (TextView)findViewById(R.id.textView3);
-            btTV.setText("BlueTooth Enabled");
-        }
-    }
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data){
-        ListView btLV = (ListView)findViewById(R.id.btListView);
-        String[] btEntries;
-        int[] btViewsID = new int[]{R.id.textView2};
-        if(resultCode==RESULT_OK){
-            TextView btTV = (TextView)findViewById(R.id.textView3);
-            btTV.setText("BlueTooth Enabled");
-            ArrayAdapter<String> mArrayAdapter = new ArrayAdapter<String>(this, R.layout.bt_list);
-            Set<BluetoothDevice> pairedDevices = btAdapter.getBondedDevices();
-// If there are paired devices
-            if (pairedDevices.size() > 0) {
-                // Loop through paired devices
-                for (BluetoothDevice device : pairedDevices) {
-                    // Add the name and address to an array adapter to show in a ListView
-                    btEntries = new String[]{device.getName()};
-//                    mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
-                }
-            }
-        }
-    }
+
     private void gpsLookout() {
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         boolean gpsOn = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
@@ -234,11 +180,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         Criteria c = new Criteria();
         c.setAccuracy(Criteria.ACCURACY_FINE);
         c.setPowerRequirement(Criteria.POWER_HIGH);
-        final String locationProvider = locationManager.getBestProvider(c,true);
-       locationListener = new LocationListener() {
+        final String locationProvider = locationManager.getBestProvider(c, true);
+        locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
                 // Called when a new location is found by the network location provider.
-                String s = "using "+location.getProvider()+"\nAccuracy: "+location.getAccuracy()+"\n"+location.getLongitude()+","+location.getLatitude();
+                String s = "using " + location.getProvider() + "\nAccuracy: " + location.getAccuracy() + "\n" + location.getLongitude() + "," + location.getLatitude();
                 m.setText(s);
             }
 
@@ -253,15 +199,15 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         };
 
 // Register the listener with the Location Manager to receive location updates
-        PermissionSettings l = new PermissionSettings(this, new PermissionSettings.OnPermissionListener() {
+        LocationSettings l = new LocationSettings(this, new LocationSettings.OnPermissionListener() {
             @Override
             public void OnPermissionChanged(boolean permissionGranted) {
                 if (permissionGranted) {
-                    try{
+                    try {
                         locationManager.getLastKnownLocation(locationProvider);
                         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
                         Location lastKnownLocation = locationManager.getLastKnownLocation(locationProvider);
-                    }catch (SecurityException s){
+                    } catch (SecurityException s) {
 
                     }
                 }
@@ -269,6 +215,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         });
     }
+
     @Override
     public boolean onLongClick(View v) {
         Snackbar.make(v, message, Snackbar.LENGTH_SHORT)
@@ -333,6 +280,51 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public void updateList() {
+
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+//        client.connect();
+//        Action viewAction = Action.newAction(
+//                Action.TYPE_VIEW, // TODO: choose an action type.
+//                "MainScreen Page", // TODO: Define a title for the content shown.
+//                // TODO: If you have web page content that matches this app activity's content,
+//                // make sure this auto-generated web page URL is correct.
+//                // Otherwise, set the URL to null.
+//                Uri.parse("http://host/path"),
+//                // TODO: Make sure this auto-generated app deep link URI is correct.
+//                Uri.parse("android-app://com.jcefinal.itamarsh.persontoperson/http/host/path")
+//        );
+//        AppIndex.AppIndexApi.start(client, viewAction);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+//        Action viewAction = Action.newAction(
+//                Action.TYPE_VIEW, // TODO: choose an action type.
+//                "MainScreen Page", // TODO: Define a title for the content shown.
+//                // TODO: If you have web page content that matches this app activity's content,
+//                // make sure this auto-generated web page URL is correct.
+//                // Otherwise, set the URL to null.
+//                Uri.parse("http://host/path"),
+//                // TODO: Make sure this auto-generated app deep link URI is correct.
+//                Uri.parse("android-app://com.jcefinal.itamarsh.persontoperson/http/host/path")
+//        );
+//        AppIndex.AppIndexApi.end(client, viewAction);
+//        client.disconnect();
+    }
+
     /**
      * A placeholder fragment containing a simple view.
      */
@@ -353,6 +345,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         private TextView gps;
         private String[] entries = new String[]{Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum, Contacts.ContactsTable.userID};
         private int[] viewsID = new int[]{R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
+        private Context context;
+        private AlertDialog approveDialog;
+        private ArrayList list;
+        private static final String SENDER_ID = "186698592995";
 
         public PlaceholderFragment() {
         }
@@ -371,82 +367,74 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
+                                 final Bundle savedInstanceState) {
             this.container = container;
             if (getArguments().getInt(ARG_SECTION_NUMBER) == 1) {
                 rootView = inflater.inflate(R.layout.activity_contacts, container, false);
+                updateList();
                 cursorListView = (ListView) rootView.findViewById(R.id.cursorListView);
-                dal = new DAL(container.getContext());
-                contex = this.getActivity();
-
-                cursor = dal.getAllTimeEntriesCursor();
-                cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
-                cursorListView.setAdapter(cursorAdapter);
                 cursorListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                     @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        Toast.makeText(rootView.getContext(), "test + " + position, Toast.LENGTH_SHORT).show();
-                        Snackbar.make(view, "test", Snackbar.LENGTH_SHORT)
-                                .setAction("Action", null).show();
+                    public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
+
+                        new AlertDialog.Builder(context)
+                                //.setTitle("Are you sure?")
+                                .setMessage("Do you want to look for " + dal.getName(position) + "?")
+                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                            }
+                                        })
+                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+
+                                    }
+                                })
+                        .show();
+
+                        Log.i(TAG, "name" + dal.getName(position));
+                        Log.e("myDebug", "item in list clicked");
 
                     }
+
                 });
+                cursorAdapter = new SimpleCursorAdapter(context, R.layout.contact, cursor, entries, viewsID, 0);
+                cursorListView.setAdapter(cursorAdapter);
+                Log.e("myDebug", "on create view = 1");
                 return rootView;
 
             }
             if (getArguments().getInt(ARG_SECTION_NUMBER) == 2) {
-                rootView = inflater.inflate(R.layout.fragment_add_page, container, false);
-//                gps = (TextView) rootView.findViewById(R.id.textView);
+                rootView = inflater.inflate(R.layout.fragment_search, container, false);
+                Log.e("myDebug", "on create view = 2");
                 return rootView;
             } else {
-                rootView = inflater.inflate(R.layout.fragment_main_screen, container, false);
+                rootView = inflater.inflate(R.layout.fragment_contacts, container, false);
                 TextView textView = (TextView) rootView.findViewById(R.id.section_label);
                 textView.setText(getString(R.string.section_format, getArguments().getInt(ARG_SECTION_NUMBER)));
                 return rootView;
-
             }
         }
 
-
-        public void reloadList(){
-            if(cursorListView==null)
-                rootView = getLayoutInflater(null).inflate(R.layout.activity_contacts,this.container , false);
-            cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
-
-            dal = new DAL(this.getContext());
-            contex = this.getActivity();
-            cursor = dal.getAllTimeEntriesCursor();
-            cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
-            cursorListView.setAdapter(cursorAdapter);
-        }
         @Override
         public void onStart() {
             super.onStart();
-            if(cursorListView==null)
-                rootView = getLayoutInflater(null).inflate(R.layout.activity_contacts,this.container , false);
-            cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
-
-            dal = new DAL(this.getContext());
-            contex = this.getActivity();
-            cursor = dal.getAllTimeEntriesCursor();
-            cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
-            cursorListView.setAdapter(cursorAdapter);
 
         }
 
         @Override
         public void onResume() {
             super.onResume();
-            if(cursorListView==null)
-                rootView = getLayoutInflater(null).inflate(R.layout.activity_contacts,this.container , false);
-            cursorListView = (ListView)rootView.findViewById(R.id.cursorListView);
+        }
 
+        private void updateList() {
+            cursorListView = (ListView) rootView.findViewById(R.id.cursorListView);
             dal = new DAL(this.getContext());
-            contex = this.getActivity();
+            context = this.getActivity();
             cursor = dal.getAllTimeEntriesCursor();
-            cursorAdapter = new SimpleCursorAdapter(this.getActivity(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
+            cursorAdapter = new SimpleCursorAdapter(context, R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
             cursorListView.setAdapter(cursorAdapter);
-
         }
 
         @Override
@@ -469,41 +457,59 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
      * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
      * one of the sections/tabs/pages.
      */
-    public class SectionsPagerAdapter extends FragmentPagerAdapter {
-        private final List<Fragment> FragmentList = new ArrayList();
-        private final List<String> FragmentTitles = new ArrayList();
-        private int tabCount = 2;
-        public SectionsPagerAdapter(FragmentManager fm) {
-            super(fm);
-        }
+//    public class SectionsPagerAdapter extends FragmentPagerAdapter {
+//        private final List<Fragment> FragmentList = new ArrayList();
+//        private final List<String> FragmentTitles = new ArrayList();
+//        private int tabCount = 2;
+//        public SectionsPagerAdapter(FragmentManager fm) {
+//            super(fm);
+//        }
+//
+//        @Override
+//        public Fragment getItem(int position) {
+//            // getItem is called to instantiate the fragment for the given page.
+//            // Return a PlaceholderFragment (defined as a static inner class below).
+//            return PlaceholderFragment.newInstance(position + 1);
+//        }
+//        public void addFragment(Fragment fragment) {
+//            FragmentList.add(fragment);
+//        }
+//        public void setTabCount(int num){
+//            this.tabCount = num;
+//        }
+//        @Override
+//        public int getCount() {
+//            return tabCount;
+//        }
+//
+//        @Override
+//        public CharSequence getPageTitle(int position) {
+//            switch (position) {
+//                case 0:
+//                    return "Contacts";
+//                case 1:
+//                    return "Search";
+//            }
+//            return null;
+//        }
+//    }
+    private void initViews() {
+        mViewPager = (ViewPager) findViewById(R.id.container);
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        fab = (FloatingActionButton) findViewById(R.id.fab);
+        tab = (TabLayout) findViewById(R.id.tabs);
+        cursorListView = (ListView) findViewById(R.id.cursorListView);
 
-        @Override
-        public Fragment getItem(int position) {
-            // getItem is called to instantiate the fragment for the given page.
-            // Return a PlaceholderFragment (defined as a static inner class below).
-            return PlaceholderFragment.newInstance(position + 1);
-        }
-        public void addFragment(Fragment fragment) {
-            FragmentList.add(fragment);
-        }
-        public void setTabCount(int num){
-            this.tabCount = num;
-        }
-        @Override
-        public int getCount() {
-            return tabCount;
-        }
+    }
 
-        @Override
-        public CharSequence getPageTitle(int position) {
-            switch (position) {
-                case 0:
-                    return "Contacts";
-                case 1:
-                    return "Search";
-            }
-            return null;
-        }
+    private void getContacts() {
+        cursorListView = (ListView) findViewById(R.id.cursorListView);
+        Cursor cursor = dal.getAllTimeEntriesCursor();
+        String[] entries = new String[]{Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum, Contacts.ContactsTable.userID};
+        int[] viewsID = new int[]{R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
+        SimpleCursorAdapter cursorAdapter = new SimpleCursorAdapter(getApplicationContext(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
+        cursorListView.setAdapter(cursorAdapter);
+
     }
 
 }

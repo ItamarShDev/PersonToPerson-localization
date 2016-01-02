@@ -4,7 +4,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.provider.ContactsContract;
 
 /**
  * Created by itamar on 27-Nov-15.
@@ -16,6 +15,7 @@ public class DAL {
     {
         cdh = new ContactsDBHelper(context);
     }
+
     public Cursor getAllTimeEntriesCursor()
     {
         //get db
@@ -43,5 +43,13 @@ public class DAL {
         db.insert(Contacts.ContactsTable.TABLE_NAME, null, values);
         db.close();
 
+    }
+
+    public String getName(int position) {
+        Cursor cursor = getAllTimeEntriesCursor();
+        cursor.moveToPosition(position);
+        int timeIndex = cursor.getColumnIndex(Contacts.ContactsTable.userName);
+        String name = cursor.getString(timeIndex);
+        return name;
     }
 }
