@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
@@ -36,6 +37,7 @@ public class GcmIntentService extends IntentService {
         // The getMessageType() intent parameter must be the intent you received
         // in your BroadcastReceiver.
         String messageType = gcm.getMessageType(intent);
+        Log.i("myDebug", "got message");
 
         if (extras != null && !extras.isEmpty()) {  // has effect of unparcelling Bundle
             // Since we're not using two way messaging, this is all we really to check for
@@ -44,6 +46,7 @@ public class GcmIntentService extends IntentService {
 
                 showToast(extras.getString("message"));
             }
+
         }
         GcmBroadcastReceiver.completeWakefulIntent(intent);
     }

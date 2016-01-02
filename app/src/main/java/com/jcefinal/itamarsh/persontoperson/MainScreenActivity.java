@@ -33,9 +33,6 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
-import android.widget.Toast;
-
-import com.google.android.gms.gcm.GoogleCloudMessaging;
 
 import java.util.ArrayList;
 
@@ -67,7 +64,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private DAL dal;
     private ListView cursorListView;
     private static final String TAG = "myDebug";
-    private GcmRegistrationIntent gcmRegistration;
+    public GcmSendMessage gcmSendMessage;
     /**
      * The {@link ViewPager} that will host the section contents.
      */
@@ -86,6 +83,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         setSupportActionBar(toolbar);
         dal = new DAL(this);
         new GcmRegistrationAsyncTask(this).execute();
+        gcmSendMessage = new GcmSendMessage(getBaseContext());
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
@@ -337,7 +335,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
          * The fragment argument representing the section number for this
          * fragment.
          */
-        private Context contex;
         private Cursor cursor;
         private DAL dal;
         private SimpleCursorAdapter cursorAdapter;
@@ -351,9 +348,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         private Context context;
         private AlertDialog approveDialog;
         private ArrayList list;
-        private static final String SENDER_ID = "186698592995";
+        private GcmSendMessage gcmSendMessage;
 
         public PlaceholderFragment() {
+            this.context = getContext();
         }
 
         /**
@@ -386,6 +384,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
                                             @Override
                                             public void onClick(DialogInterface dialog, int which) {
+                                                gcmSendMessage = new GcmSendMessage(context);
+                                                gcmSendMessage.sendMessage("053");
                                             }
                                         })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -396,7 +396,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                 })
                         .show();
 
-                        Log.i(TAG, "name" + dal.getName(position));
+                        Log.i(TAG, "name " + dal.getName(position));
                         Log.e("myDebug", "item in list clicked");
 
                     }
