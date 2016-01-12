@@ -15,6 +15,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.os.ParcelUuid;
 import android.provider.Settings;
@@ -62,6 +63,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
      * may be best to switch to a
      * {@link FragmentStatePagerAdapter}.
      */
+    private IntentFilter mIntentFilter;
+    private WifiP2pManager mManager;
+    private WifiP2pManager.Channel mChannel;
+    private BroadcastReceiver mReceiver;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
     public int[] colorIntArray = {R.color.blue, R.color.dark_pink, R.color.red};
@@ -97,6 +102,14 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_screen);
         initViews();
+        mIntentFilter = new IntentFilter();
+        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
+        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
+        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+        mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
+        mChannel = mManager.initialize(this, getMainLooper(), null);
+        mReceiver = new WiFiDirectBroadcastReceiver(mManager, mChannel, this);
         play = false;
         setSupportActionBar(toolbar);
         dal = new DAL(this);
@@ -184,18 +197,31 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             buildAlertMessageNoGps(WIFI_ON);
         }else{
             Log.i("ALGO", "WiFi On");
+            mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    Log.i("P2P", "discoverPeers SUCCESS");
+                }
+
+                @Override
+                public void onFailure(int reasonCode) {
+                    Log.i("P2P", "discoverPeers Failure");
+                }
+            });
         }
     }
 
     @Override
     public void onResume(){
         super.onResume();
+        registerReceiver(mReceiver, mIntentFilter);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter("my-event"));
     }
     @Override
     protected void onPause() {
         // Unregister since the activity is not visible
+        unregisterReceiver(mReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         super.onPause();
     }
