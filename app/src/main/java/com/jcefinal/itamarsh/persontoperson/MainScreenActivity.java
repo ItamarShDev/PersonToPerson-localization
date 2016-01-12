@@ -3,6 +3,7 @@ package com.jcefinal.itamarsh.persontoperson;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -13,7 +14,9 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.ParcelUuid;
 import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -42,6 +45,8 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 //import com.google.android.gms.appindexing.Action;
@@ -76,8 +81,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private GcmRegistrationIntent gcmRegistration;
     private Location l, correntLocation;
     private final int MIN_GPS_RADIUS = 30,BT_ON_RADIUS = 20;
-    boolean gpsOn, wifiOn;
-    private final static int WIFI_ON =1, GPS_ON = 2,BT_ON = 3;
+    boolean gpsOn, networkOn;
+    private final static int NETWORK_ON=0, WIFI_ON =1, GPS_ON = 2,BT_ON = 3;
     /**
      * The {@link ViewPager} that will host the section contents.
      */
@@ -157,24 +162,29 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 locationText.setText(dtLoc);
                 TextView m = (TextView) findViewById(R.id.textView);
                 m.setText(loc);
-                locationAlogorithm(d);
+                locationAlgorithm(d);
             }
         }
     };
 
-    private void locationAlogorithm(float d) {
-        switch (Math.round(d)){
-            case MIN_GPS_RADIUS:
-                wifi();
-                break;
-            case BT_ON_RADIUS:
-                blueTooth();
-                break;
+    private void locationAlgorithm(float d) {
+        Log.i("ALGO","distance is "+Math.round(d));
+        if (Math.round(d)<=BT_ON_RADIUS){
+            blueTooth();
+        }
+        if (Math.round(d)<=MIN_GPS_RADIUS) {
+            wifi();
         }
     }
 
     private void wifi() {
-        Toast.makeText(this, "WiFi Range", Toast.LENGTH_LONG).show();
+        Log.i("ALGO", "WiFi Range");
+        WifiManager wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+        if (!wifi.isWifiEnabled()){
+            buildAlertMessageNoGps(WIFI_ON);
+        }else{
+            Log.i("ALGO", "WiFi On");
+        }
     }
 
     @Override
@@ -252,9 +262,31 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             if (mBluetoothAdapter.isEnabled()) {
                 // Bluetooth is not enable :)
                 Log.i("BlueTooth", "enabled");
+                BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+
+                Method getUuidsMethod = null;
+                try {
+                    getUuidsMethod = BluetoothAdapter.class.getDeclaredMethod("getUuids", null);
+                } catch (NoSuchMethodException e) {
+                    e.printStackTrace();
+                }
+
+                ParcelUuid[] uuids = new ParcelUuid[0];
+                try {
+                    uuids = (ParcelUuid[]) getUuidsMethod.invoke(adapter, null);
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+
+                for (ParcelUuid uuid: uuids) {
+                    Log.d("BT_UUID", "UUID: " + uuid.getUuid().toString());
+                }
             }
             else{
                 Log.i("BlueTooth", "disabled");
+                buildAlertMessageNoGps(BT_ON);
             }
         }
     }
@@ -262,12 +294,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         gpsOn = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        wifiOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        networkOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
         if (!gpsOn) {
-            buildAlertMessageNoGps(1);
+            buildAlertMessageNoGps(GPS_ON);
         }
-        if((!wifiOn)&&gpsOn){
-            buildAlertMessageNoGps(2);
+        if((!networkOn)&&gpsOn){
+            buildAlertMessageNoGps(NETWORK_ON);
         }
         Criteria c = new Criteria();
         c.setAccuracy(Criteria.ACCURACY_FINE);
@@ -314,42 +346,45 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 if(!gpsOn)
                     Toast.makeText(getApplicationContext(), "Search Disabled", Toast.LENGTH_LONG).show();
                 else{
-                    if(!wifiOn){
-                        buildAlertMessageNoGps(2);
+                    if(!networkOn){
+                        buildAlertMessageNoGps(WIFI_ON);
                     }
                 }
-        }
-        if (requestCode == WIFI_ON) {
-            // Make sure the request was successful
-                wifiOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-                if(!wifiOn)
-                    Toast.makeText(getApplicationContext(), "Search Accuracy Not Optimal", Toast.LENGTH_LONG).show();
         }
     }
 
     private void buildAlertMessageNoGps(final int type) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        final String posType = type==1?"GPS":"WiFi";
-        final String cancel = type==1?"Cancel Search":"No Thanks";
+        String posType = (type==GPS_ON||type==NETWORK_ON)?"GPS":"WiFi";
+        final String cancel = type==GPS_ON?"Cancel Search":"No Thanks";
+        if(type==BT_ON)
+            posType = "BlueTooth";
         builder.setMessage("Your "+posType+" seems to be disabled, do you want to enable it?")
                 .setCancelable(false)
                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                     public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
                         switch (type){
-                            case 1:
+                            case GPS_ON:
                                 startActivityForResult(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS), GPS_ON);
                             break;
-                            case 2:
+                            case NETWORK_ON:
+                                startActivityForResult(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS), GPS_ON);
+                                break;
+                            case WIFI_ON:
                                 startActivityForResult(new Intent(Settings.ACTION_WIFI_SETTINGS), WIFI_ON);
-                                wifiOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
                             break;
+                            case BT_ON:
+                                startActivityForResult(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS), BT_ON);
+                                break;
                         }
                     }
                 })
                 .setNegativeButton(cancel, new DialogInterface.OnClickListener() {
                     public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-                        if(type==1) {
+                        if(type==GPS_ON) {
                             Toast.makeText(getApplicationContext(), "Search Disabled", Toast.LENGTH_LONG).show();
+                        }else{
+                            Toast.makeText(getApplicationContext(), "WiFi Disabled", Toast.LENGTH_LONG).show();
                         }
                         dialog.cancel();
                     }
