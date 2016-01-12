@@ -3,6 +3,7 @@ package com.jcefinal.itamarsh.persontoperson;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.util.Log;
 
@@ -40,6 +41,23 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
             }
         } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
             // Call WifiP2pManager.requestPeers() to get a list of current peers
+            // request available peers from the wifi p2p manager. This is an
+            // asynchronous call and the calling activity is notified with a
+            // callback on PeerListListener.onPeersAvailable()
+            if (mManager != null) {
+                Log.i("P2P","Searching Peers");
+                mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
+
+                    @Override
+                    public void onPeersAvailable(WifiP2pDeviceList peers) {
+                        Log.d("P2P", String.format("PeerListListener: %d peers available, updating device list", peers.getDeviceList().size()));
+
+                        // DO WHATEVER YOU WANT HERE
+                        // YOU CAN GET ACCESS TO ALL THE DEVICES YOU FOUND FROM peers OBJECT
+
+                    }
+                });
+            }
         } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             // Respond to new connection or disconnections
         } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
