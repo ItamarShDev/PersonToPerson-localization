@@ -76,6 +76,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private GcmRegistrationIntent gcmRegistration;
     private Location l, correntLocation;
     private final int MIN_GPS_RADIUS = 30,BT_ON_RADIUS = 20;
+    boolean gpsOn, wifiOn;
+    private final static int WIFI_ON =1, GPS_ON = 2,BT_ON = 3;
     /**
      * The {@link ViewPager} that will host the section contents.
      */
@@ -150,7 +152,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 l.setLatitude(Float.valueOf(location[1]));
                 d = correntLocation.distanceTo(l);
                 Log.i("DISTANCE", ""+d);
-                String dtLoc = "Distance: "+d;
+                String dtLoc = "Friend Location: "+message+"\nDistance: "+d;
                 TextView locationText = (TextView)findViewById(R.id.distanceText);
                 locationText.setText(dtLoc);
                 TextView m = (TextView) findViewById(R.id.textView);
@@ -163,11 +165,16 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private void locationAlogorithm(float d) {
         switch (Math.round(d)){
             case MIN_GPS_RADIUS:
+                wifi();
                 break;
             case BT_ON_RADIUS:
                 blueTooth();
                 break;
         }
+    }
+
+    private void wifi() {
+        Toast.makeText(this, "WiFi Range", Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -254,12 +261,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private void gpsLookout() {
 
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        boolean gpsOn = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        boolean wifiOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        gpsOn = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        wifiOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
         if (!gpsOn) {
             buildAlertMessageNoGps(1);
         }
-        if(!wifiOn){
+        if((!wifiOn)&&gpsOn){
             buildAlertMessageNoGps(2);
         }
         Criteria c = new Criteria();
@@ -298,30 +305,56 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         });
     }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // Check which request we're responding to
+        if (requestCode == GPS_ON) {
+            // Make sure the request was successful
+                gpsOn = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+                if(!gpsOn)
+                    Toast.makeText(getApplicationContext(), "Search Disabled", Toast.LENGTH_LONG).show();
+                else{
+                    if(!wifiOn){
+                        buildAlertMessageNoGps(2);
+                    }
+                }
+        }
+        if (requestCode == WIFI_ON) {
+            // Make sure the request was successful
+                wifiOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+                if(!wifiOn)
+                    Toast.makeText(getApplicationContext(), "Search Accuracy Not Optimal", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void buildAlertMessageNoGps(final int type) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        String posType = type==1?"GPS":"WiFi";
+        final String posType = type==1?"GPS":"WiFi";
+        final String cancel = type==1?"Cancel Search":"No Thanks";
         builder.setMessage("Your "+posType+" seems to be disabled, do you want to enable it?")
                 .setCancelable(false)
                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                     public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
                         switch (type){
                             case 1:
-                                startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                                startActivityForResult(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS), GPS_ON);
                             break;
                             case 2:
-                                startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+                                startActivityForResult(new Intent(Settings.ACTION_WIFI_SETTINGS), WIFI_ON);
+                                wifiOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
                             break;
                         }
-
-
                     }
                 })
-                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                .setNegativeButton(cancel, new DialogInterface.OnClickListener() {
                     public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+                        if(type==1) {
+                            Toast.makeText(getApplicationContext(), "Search Disabled", Toast.LENGTH_LONG).show();
+                        }
                         dialog.cancel();
                     }
                 });
+
         final AlertDialog alert = builder.create();
         alert.show();
     }
