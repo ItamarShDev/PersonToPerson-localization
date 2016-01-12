@@ -44,12 +44,32 @@ public class DAL {
         db.close();
 
     }
-
+    public String getName(String phone) {
+        Cursor cursor = getAllTimeEntriesCursor();
+        int position = 0;
+        String name;
+        do{
+            cursor.moveToPosition(position);
+            int timeIndex = cursor.getColumnIndex(Contacts.ContactsTable.phoneNum);
+            name = cursor.getString(timeIndex);
+        position++;
+        }
+        while(!name.equals(phone)&&(position<cursor.getCount()));
+        int timeIndex = cursor.getColumnIndex(Contacts.ContactsTable.userName);
+        return cursor.getString(timeIndex);
+    }
     public String getName(int position) {
         Cursor cursor = getAllTimeEntriesCursor();
         cursor.moveToPosition(position);
         int timeIndex = cursor.getColumnIndex(Contacts.ContactsTable.userName);
         String name = cursor.getString(timeIndex);
         return name;
+    }
+    public String getPhone(int position) {
+        Cursor cursor = getAllTimeEntriesCursor();
+        cursor.moveToPosition(position);
+        int timeIndex = cursor.getColumnIndex(Contacts.ContactsTable.phoneNum);
+        String phone = cursor.getString(timeIndex);
+        return phone;
     }
 }
