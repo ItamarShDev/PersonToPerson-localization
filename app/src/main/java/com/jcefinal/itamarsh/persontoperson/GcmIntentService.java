@@ -80,16 +80,6 @@ public class GcmIntentService extends IntentService {
         intent.putExtra("message", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
-
-//    private void saveToMemory(String message) {
-//        String temp[];
-//        temp = message.split(",");
-//        edit = memory.edit();
-//        edit.putString("long", temp[0]);
-//        edit.putString("lat", temp[1]);
-//        edit.putString("message", "false");
-//        edit.apply();
-//    }
     protected void showToast(final String message) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override

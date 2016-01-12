@@ -1,6 +1,7 @@
 package com.jcefinal.itamarsh.persontoperson;
 
 import android.app.AlertDialog;
+import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -13,6 +14,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
@@ -163,6 +165,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             case MIN_GPS_RADIUS:
                 break;
             case BT_ON_RADIUS:
+                blueTooth();
                 break;
         }
     }
@@ -233,14 +236,31 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 break;
         }
     }
-
+    private void blueTooth(){
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (mBluetoothAdapter == null) {
+            Log.i("BlueTooth", "no bt");
+            // Device does not support Bluetooth
+        } else {
+            if (mBluetoothAdapter.isEnabled()) {
+                // Bluetooth is not enable :)
+                Log.i("BlueTooth", "enabled");
+            }
+            else{
+                Log.i("BlueTooth", "disabled");
+            }
+        }
+    }
     private void gpsLookout() {
 
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         boolean gpsOn = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
         boolean wifiOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-        if ( !locationManager.isProviderEnabled( LocationManager.GPS_PROVIDER ) ) {
-            buildAlertMessageNoGps();
+        if (!gpsOn) {
+            buildAlertMessageNoGps(1);
+        }
+        if(!wifiOn){
+            buildAlertMessageNoGps(2);
         }
         Criteria c = new Criteria();
         c.setAccuracy(Criteria.ACCURACY_FINE);
@@ -278,13 +298,23 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         });
     }
-    private void buildAlertMessageNoGps() {
+    private void buildAlertMessageNoGps(final int type) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setMessage("Your GPS seems to be disabled, do you want to enable it?")
+        String posType = type==1?"GPS":"WiFi";
+        builder.setMessage("Your "+posType+" seems to be disabled, do you want to enable it?")
                 .setCancelable(false)
                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                     public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-                        startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                        switch (type){
+                            case 1:
+                                startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                            break;
+                            case 2:
+                                startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+                            break;
+                        }
+
+
                     }
                 })
                 .setNegativeButton("No", new DialogInterface.OnClickListener() {

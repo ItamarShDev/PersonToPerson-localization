@@ -12,7 +12,7 @@
     <permission
         android:name="com.example.gcm.permission.C2D_MESSAGE"
         android:protectionLevel="signature" />
-
+    <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="com.example.gcm.permission.C2D_MESSAGE" />
 
     <application
@@ -48,7 +48,6 @@
             </intent-filter>
         </receiver>
         <service android:name=".GcmIntentService" />
-        <service android:name=".GeofenceTransitionsIntentService"/>
 
     </application>
 
