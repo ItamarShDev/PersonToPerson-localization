@@ -104,4 +104,6 @@
     <string name="title_activity_second">SecondActivity</string>
     <string name="title_activity_main_screen">MainScreenActivity</string>
     <string name="section_format">Hello World from section: %1$d</string>
+    <string name="welcomeString">Welcome to \"Find Your Friend\"!</string>
+    <string name="enterPhoneString">Please enter your phone number and your name:</string>
 </resources>

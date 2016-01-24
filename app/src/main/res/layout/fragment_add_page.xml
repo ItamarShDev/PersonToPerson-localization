@@ -4,29 +4,24 @@
     android:layout_height="match_parent">
 
     <TextView
-        android:gravity="center"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="BT disabled"
+        android:text="New Text"
         android:id="@+id/textView3"
         android:layout_gravity="center_horizontal" />
 
     <TextView
-        android:gravity="center"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Your Location Here"
+        android:text="Large Text"
         android:id="@+id/textView"
         android:layout_gravity="center_horizontal" />
 
-    <TextView
-        android:gravity="center|bottom"
+    <ListView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minLines="2"
-        android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Large Text"
-        android:id="@+id/distanceText" />
+        android:id="@+id/btListView"
+        android:layout_gravity="center_horizontal" />
 
 </LinearLayout>

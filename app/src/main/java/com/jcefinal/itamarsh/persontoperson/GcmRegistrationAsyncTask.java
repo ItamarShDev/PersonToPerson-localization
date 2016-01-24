@@ -2,8 +2,10 @@
 package com.jcefinal.itamarsh.persontoperson;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -20,12 +22,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
-class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
-    //private static Registration regService = null;
+class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
     private GoogleCloudMessaging gcm;
     private Context context;
     private static final String TAG ="myDebug";
@@ -39,7 +42,7 @@ class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
     }
 
     @Override
-    protected String doInBackground(Void... params) {
+    protected String doInBackground(String... params) {
         Log.d(TAG,"Running");
         String authorizedEntity = SENDER_ID; // Project id from Google Developer Console
         token = "";
@@ -51,10 +54,7 @@ class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
                 gcm = GoogleCloudMessaging.getInstance(context);
             }
             token = InstanceID.getInstance(context).getToken(authorizedEntity, scope);
-            Log.i(TAG, "GCM Registration Token: " + token);
-
-            registerToServer();
-            msg = "Device registered, registration ID=" + token;
+            sendToServer(params[0], params[1], params[2]);
 
         } catch (IOException ex) {
             Log.d(TAG, "Failed to complete token refresh", ex);
@@ -66,7 +66,6 @@ class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
 
     @Override
     protected void onPostExecute(String msg) {
-        Toast.makeText(context, msg, Toast.LENGTH_LONG).show();
         Log.i(TAG, "in post execute");
         Logger.getLogger("REGISTRATION").log(Level.INFO, msg);
         Bundle data = new Bundle();
@@ -79,29 +78,13 @@ class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
             e.printStackTrace();
         }
     }
-
-    private void registerToServer()
-    {
-        String server_addr = "http://p2p-gcm-server.appspot.com/register";
-
-        JSONObject jsonBody = new JSONObject();
-        try {
-            jsonBody.put("user_id", token);
-            jsonBody.put("id", "054");
-            jsonBody.put("username", "olesya");
-
-        }
-        catch (JSONException e)
-        {
-            Log.i(TAG, "json error" + e.getMessage());
-
-        }
-        Log.i(TAG, "after building json");
+    private void sendToServer(String op, JSONObject jo){
+        String serverAddr = "http://p2p-gcm-server.appspot.com/"+op;
         queue = Volley.newRequestQueue(context);
         JsonObjectRequest request = new JsonObjectRequest(
                 Request.Method.POST,
-                server_addr,
-                jsonBody,
+                serverAddr,
+                jo,
                 new Response.Listener<JSONObject>()
                 {
                     @Override
@@ -127,5 +110,63 @@ class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
         );
         request.setTag("REQUEST");
         queue.add(request);
+    }
+    public void sendMessage(String to,String message){
+        String op = "message";
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("from", token);
+            jsonBody.put("to", to);
+            jsonBody.put("message", message);
+
+        }
+        catch (JSONException e)
+        {
+            Log.i(TAG, "json error" + e.getMessage());
+        }
+        Log.i(TAG, "after building json");
+        sendToServer(op, jsonBody);
+    }
+    private void registerToServer()
+    {
+        String op = "register";
+        String hashString = "";
+        SharedPreferences memory;
+        memory = context.getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
+        try {
+            String phone =  memory.getString("myphone", "");
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+
+            md.update(phone.getBytes());
+            byte[] digest = md.digest();
+            hashString =  Base64.encodeToString(digest, Base64.DEFAULT);
+            Log.i(TAG,"hash " + hashString);
+        }
+        catch (NoSuchAlgorithmException e)
+        {}
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("user_id", token);
+            jsonBody.put("id", hashString);
+            jsonBody.put("username", memory.getString("myname", "almoni"));
+
+        }
+        catch (JSONException e)
+        {
+            Log.i(TAG, "json error" + e.getMessage());
+        }
+        Log.i(TAG, "after building json " + jsonBody);
+        Log.i(TAG, "GCM Registration Token: " + token);
+        sendToServer(op, jsonBody);
+    }
+    public void sendToServer(String op, String to, String message){
+        switch (op){
+            case "register":
+                registerToServer();
+                break;
+            case "message":
+                sendMessage(to, message);
+                break;
+        }
     }
 }
