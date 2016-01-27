@@ -1,10 +1,10 @@
 package com.jcefinal.itamarsh.persontoperson;
 
-import android.media.Image;
 import android.provider.BaseColumns;
 
 /**
  * Created by itamar on 27-Nov-15.
+ * This class contain final Strings that used in ContactsDBHelper
  */
 public class Contacts {
     public Contacts(){}
@@ -14,6 +14,7 @@ public class Contacts {
         public static final String userID = "id";
         public static final String btId = "BT_Id";
         public static final String phoneNum = "phone";
+        public static final String hashedPhone = "ephone";
         public static final String wifiId = "WiFi_Id";
     }
 }

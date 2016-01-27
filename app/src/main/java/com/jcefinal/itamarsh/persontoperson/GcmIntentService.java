@@ -5,8 +5,8 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
-import android.content.Intent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
@@ -14,7 +14,6 @@ import android.os.Looper;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
@@ -24,12 +23,8 @@ import org.json.JSONObject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * An {@link IntentService} subclass for handling asynchronous task requests in
- * a service on a separate handler thread.
- * <p/>
- * TODO: Customize class - update intent actions, extra parameters and static
- * helper methods.
+/*
+ * This class responsible for treat of arriving GCM messages, using seperate thread
  */
 public class GcmIntentService extends IntentService {
     private SharedPreferences memory;
@@ -43,24 +38,19 @@ public class GcmIntentService extends IntentService {
     protected void onHandleIntent(Intent intent) {
         Bundle extras = intent.getExtras();
         GoogleCloudMessaging gcm = GoogleCloudMessaging.getInstance(this);
-        // The getMessageType() intent parameter must be the intent you received
-        // in your BroadcastReceiver.
         String messageType = gcm.getMessageType(intent);
 
         if (extras != null && !extras.isEmpty()) {  // has effect of unparcelling Bundle
-            // Since we're not using two way messaging, this is all we really to check for
             if (GoogleCloudMessaging.MESSAGE_TYPE_MESSAGE.equals(messageType)) {
                 Logger.getLogger("GCM_RECEIVED").log(Level.INFO, extras.toString());
                 Log.e("Bundle", "" + extras.keySet());
                 String m = extras.getString("message", "empty");
                 Log.e("Bundle", "Got message");
                 Log.e("Bundle", m);
-//                memory = getApplication().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
                 try {
                     JSONObject js = new JSONObject(extras.getString("message"));
                     String str = js.getString("message");
                     if (str.contains(",")) {
-//                        saveToMemory(extras.getString("message"));
                         sendMessage(str);
                     } else {
                         showToast(extras.getString("message"));
@@ -76,7 +66,6 @@ public class GcmIntentService extends IntentService {
 
     private void sendMessage(String data) {
         Intent intent = new Intent("my-event");
-        // add data
         intent.putExtra("message", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -86,9 +75,11 @@ public class GcmIntentService extends IntentService {
             public void run() {
                 Context c = getBaseContext();
                 String from = "", m = "";
+                Log.i("Here ", message );
                 try {
                     JSONObject responseJSON;
                     DAL dal = new DAL(getBaseContext());
+
                     responseJSON = new JSONObject(message);
                     from = dal.getName(responseJSON.getString("from"));
                     m = responseJSON.getString("message");
@@ -104,7 +95,7 @@ public class GcmIntentService extends IntentService {
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(c);
                 builder.setDefaults(Notification.DEFAULT_ALL);
                 builder.setSmallIcon(R.mipmap.ic_launcher);
-                builder.setContentTitle("Person2Person");
+                builder.setContentTitle("Find Your Friend");
                 builder.setContentText(from + ": " + m);
                 builder.setAutoCancel(true);
                 //set click listener

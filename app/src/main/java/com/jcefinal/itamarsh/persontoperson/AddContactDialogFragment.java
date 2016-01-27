@@ -11,11 +11,14 @@ import android.widget.EditText;
 
 /**
  * Created by itamar on 28-Nov-15.
+ * This class responsible for Add Contacts dialog
+ * The dialog will responsible for adding new contact to contact list and saving it in DB
  */
 public class AddContactDialogFragment extends DialogFragment {
 
     private DAL dal;
     private DialogInterface.OnDismissListener onDismissListener;
+    private Helper helper = new Helper();
 
     public void setOnDismissListener(DialogInterface.OnDismissListener onDismissListener) {
         this.onDismissListener = onDismissListener;
@@ -37,6 +40,7 @@ public class AddContactDialogFragment extends DialogFragment {
         final EditText mName = (EditText)v.findViewById(R.id.username);
         final EditText mPhone = (EditText)v.findViewById(R.id.phone);
         dal = new DAL(this.getActivity());
+
         builder.setView(v)
                 .setPositiveButton(R.string.add_button, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
@@ -45,9 +49,8 @@ public class AddContactDialogFragment extends DialogFragment {
                     }
                 })
                 .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
+                    public void onClick(DialogInterface dialog, int id) { // User cancelled the dialog
                         AddContactDialogFragment.this.getDialog().cancel();
-                        // User cancelled the dialog
                     }
                 });
         // Create the AlertDialog object and return it

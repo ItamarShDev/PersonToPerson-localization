@@ -4,8 +4,6 @@ package com.jcefinal.itamarsh.persontoperson;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
-import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -22,20 +20,21 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-
+/*
+ * This class responsible for communication with GCM server.
+ * prepareOperation - preparing json body to send to server depending on operation required
+ * registerToServer - preparing json body for registration to GCM server
+ * sendMessage - preparing json body for sending message to other device using GCM server
+ */
 class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
     private GoogleCloudMessaging gcm;
     private Context context;
-    private static final String TAG ="myDebug";
+    private static final String TAG ="GcmRegistrationAsyncTas";
     private static final String SENDER_ID = "186698592995";
-    private static final String PROJECT_ID = "p2p-gcm-server";
     private String token;
     private RequestQueue queue;
+    private Helper helper = new Helper();
 
     public GcmRegistrationAsyncTask(Context context) {
         this.context = context;
@@ -43,7 +42,7 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
 
     @Override
     protected String doInBackground(String... params) {
-        Log.d(TAG,"Running");
+        Log.d(TAG, "Running");
         String authorizedEntity = SENDER_ID; // Project id from Google Developer Console
         token = "";
 
@@ -54,7 +53,7 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
                 gcm = GoogleCloudMessaging.getInstance(context);
             }
             token = InstanceID.getInstance(context).getToken(authorizedEntity, scope);
-            sendToServer(params[0], params[1], params[2]);
+            prepareOperation(params[0], params[1], params[2]);
 
         } catch (IOException ex) {
             Log.d(TAG, "Failed to complete token refresh", ex);
@@ -67,17 +66,18 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
     @Override
     protected void onPostExecute(String msg) {
         Log.i(TAG, "in post execute");
-        Logger.getLogger("REGISTRATION").log(Level.INFO, msg);
-        Bundle data = new Bundle();
-        data.putString("my_message", "G2 say hello!");
-        data.putString("my_action", "SAY_HELLO");
-        try {
-            gcm.send(SENDER_ID + "@gcm.googleapis.com", "2212", data);
-            Log.d(TAG, "sent message");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        Logger.getLogger("REGISTRATION").log(Level.INFO, msg);
+//        Bundle data = new Bundle();
+//        data.putString("my_message", "G2 say hello!");
+//        data.putString("my_action", "SAY_HELLO");
+//        try {
+//            gcm.send(SENDER_ID + "@gcm.googleapis.com", "2212", data);
+//            Log.d(TAG, "sent message");
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
+    /* POST to GCM server using volley library */
     private void sendToServer(String op, JSONObject jo){
         String serverAddr = "http://p2p-gcm-server.appspot.com/"+op;
         queue = Volley.newRequestQueue(context);
@@ -103,7 +103,14 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Toast.makeText(context, "Got error", Toast.LENGTH_LONG).show();
+                    try{
                         Log.i(TAG, error.getMessage());
+                    }
+                    catch (NullPointerException e)
+                    {
+                        Log.i(TAG, "Volley Error");
+                    }
+
                     }
                 }
 
@@ -111,6 +118,9 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
         request.setTag("REQUEST");
         queue.add(request);
     }
+
+
+    /* preparing json body for sending message to other device using GCM server  */
     public void sendMessage(String to,String message){
         String op = "message";
         JSONObject jsonBody = new JSONObject();
@@ -127,23 +137,15 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
         Log.i(TAG, "after building json");
         sendToServer(op, jsonBody);
     }
+
+    /*preparing json body for registration to GCM server*/
     private void registerToServer()
     {
         String op = "register";
-        String hashString = "";
         SharedPreferences memory;
         memory = context.getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
-        try {
-            String phone =  memory.getString("myphone", "");
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
+        String hashString = helper.encode(memory.getString("myphone", ""));
 
-            md.update(phone.getBytes());
-            byte[] digest = md.digest();
-            hashString =  Base64.encodeToString(digest, Base64.DEFAULT);
-            Log.i(TAG,"hash " + hashString);
-        }
-        catch (NoSuchAlgorithmException e)
-        {}
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("user_id", token);
@@ -159,12 +161,15 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
         Log.i(TAG, "GCM Registration Token: " + token);
         sendToServer(op, jsonBody);
     }
-    public void sendToServer(String op, String to, String message){
+
+    /* prepareOperation - preparing json body to send to server depending on operation required*/
+    public void prepareOperation(String op, String to, String message){
         switch (op){
             case "register":
                 registerToServer();
                 break;
             case "message":
+                Log.i(TAG, "send message");
                 sendMessage(to, message);
                 break;
         }

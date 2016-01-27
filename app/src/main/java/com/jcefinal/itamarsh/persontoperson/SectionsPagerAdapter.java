@@ -5,9 +5,6 @@ package com.jcefinal.itamarsh.persontoperson;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
-
-import com.jcefinal.itamarsh.persontoperson.MainScreenActivity;
-
 import java.util.ArrayList;
 import java.util.List;
 

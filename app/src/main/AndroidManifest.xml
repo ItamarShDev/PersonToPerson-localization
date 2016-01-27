@@ -63,11 +63,6 @@
 
         <service android:name=".GcmIntentService" />
 
-        <receiver
-            android:name=".WiFiDirectBroadcastReceiver"
-            android:enabled="true"
-            android:exported="true" />
-
     </application>
 
 </manifest>

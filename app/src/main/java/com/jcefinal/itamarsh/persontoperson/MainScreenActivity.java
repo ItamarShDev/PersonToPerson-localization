@@ -49,10 +49,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
-//import com.google.android.gms.appindexing.Action;
-//import com.google.android.gms.appindexing.AppIndex;
 
-public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, ContactsInterface {
+
+public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener {
 
     /**
      * The {@link PagerAdapter} that will provide
@@ -65,7 +64,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
-    private BroadcastReceiver mReceiver;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
     public int[] colorIntArray = {R.color.blue, R.color.dark_pink, R.color.red};
@@ -107,7 +105,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
-        mReceiver = new WiFiDirectBroadcastReceiver(mManager, mChannel, this);
         play = false;
         setSupportActionBar(toolbar);
         dal = new DAL(this);
@@ -229,14 +226,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     @Override
     public void onResume(){
         super.onResume();
-        registerReceiver(mReceiver, mIntentFilter);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter("my-event"));
     }
     @Override
     protected void onPause() {
         // Unregister since the activity is not visible
-        unregisterReceiver(mReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         super.onPause();
     }
@@ -498,10 +493,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    public void updateList() {
-
-    }
 
     @Override
     public void onStart() {
@@ -569,7 +560,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
 
                         new AlertDialog.Builder(context)
-                                //.setTitle("Are you sure?")
                                 .setMessage("Do you want to look for " + dal.getName(position) + "?")
                                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                                     @Override
@@ -670,46 +660,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
-    /**
-     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
-     * one of the sections/tabs/pages.
-     */
-//    public class SectionsPagerAdapter extends FragmentPagerAdapter {
-//        private final List<Fragment> FragmentList = new ArrayList();
-//        private final List<String> FragmentTitles = new ArrayList();
-//        private int tabCount = 2;
-//        public SectionsPagerAdapter(FragmentManager fm) {
-//            super(fm);
-//        }
-//
-//        @Override
-//        public Fragment getItem(int position) {
-//            // getItem is called to instantiate the fragment for the given page.
-//            // Return a PlaceholderFragment (defined as a static inner class below).
-//            return PlaceholderFragment.newInstance(position + 1);
-//        }
-//        public void addFragment(Fragment fragment) {
-//            FragmentList.add(fragment);
-//        }
-//        public void setTabCount(int num){
-//            this.tabCount = num;
-//        }
-//        @Override
-//        public int getCount() {
-//            return tabCount;
-//        }
-//
-//        @Override
-//        public CharSequence getPageTitle(int position) {
-//            switch (position) {
-//                case 0:
-//                    return "Contacts";
-//                case 1:
-//                    return "Search";
-//            }
-//            return null;
-//        }
-//    }
     private void initViews() {
         mViewPager = (ViewPager) findViewById(R.id.container);
         toolbar = (Toolbar) findViewById(R.id.toolbar);

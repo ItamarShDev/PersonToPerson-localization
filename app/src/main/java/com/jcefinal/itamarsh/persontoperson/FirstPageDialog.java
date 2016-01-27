@@ -13,6 +13,8 @@ import android.widget.EditText;
 
 /**
  * Created by olesya on 23-Jan-16.
+ * This class responsible for dialog showed when application first installed.
+ * The dialog will prompt for name and phone number and will save in Shared Preferences
  */
 public class FirstPageDialog extends DialogFragment {
 
