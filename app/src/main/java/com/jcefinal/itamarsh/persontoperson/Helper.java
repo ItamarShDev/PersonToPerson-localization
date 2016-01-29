@@ -12,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
 public class Helper {
     public static final String REQUEST = "I Want to Search For You";
     public static final String REFUSE = "Sorry friend. I'm hiding from you ;)";
+    public static final String APPROVED = "Commencing search ...";
     /* This function responsible for encoding string to SHA-256*/
     public String encode(String num)
     {

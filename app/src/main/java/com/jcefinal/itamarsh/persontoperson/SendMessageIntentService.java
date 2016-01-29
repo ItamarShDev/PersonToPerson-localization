@@ -1,6 +1,7 @@
 package com.jcefinal.itamarsh.persontoperson;
 
 import android.app.IntentService;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -46,6 +47,8 @@ public class SendMessageIntentService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
+        NotificationManager nm = (NotificationManager)getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        nm.cancel(0);
         String op = intent.getStringExtra("operation");
         String to = intent.getStringExtra("to");
         String content = intent.getStringExtra("content");

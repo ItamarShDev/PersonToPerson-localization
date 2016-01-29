@@ -87,31 +87,32 @@ public class GcmIntentService extends IntentService {
                     m = responseJSON.getString("message");
                     memory = getApplication().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
                     edit = memory.edit();
-                    edit.putString("to", responseJSON.getString("from"));
+                    edit.putString("to", fromPhone);
                     edit.apply();
 
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
-
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(c);
                 builder.setDefaults(Notification.DEFAULT_ALL);
                 builder.setSmallIcon(R.drawable.icon);
                 builder.setContentTitle("Find Your Friend");
                 builder.setContentText(from + ": " + m);
                 builder.setAutoCancel(true);
-                if(m.startsWith("I"))
+                TaskStackBuilder stackBuilder = TaskStackBuilder.create(getBaseContext());
+                if(m.equals(Helper.REQUEST))
                  {
                     //set click listener on approve button
-                    Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
-                    approve.putExtra("loc", 1);
-                    approve.setAction("approve");
-                    TaskStackBuilder stackBuilder = TaskStackBuilder.create(getBaseContext());
-                    stackBuilder.addParentStack(MainScreenActivity.class);
-                    stackBuilder.addNextIntent(approve);
-                    PendingIntent approvePendingIntent =
-                            stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
-                    builder.addAction(0, "approve", approvePendingIntent);
+                     Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
+                     approve.putExtra("loc", 1);
+                     approve.setAction("approve");
+
+                     stackBuilder.addParentStack(MainScreenActivity.class);
+                     stackBuilder.addNextIntent(approve);
+                     PendingIntent approvePendingIntent =
+                             stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
+
+                     builder.addAction(0, "approve", approvePendingIntent);
 
                     //set click listener on refuse button
                     Intent refuse = new Intent(getBaseContext(), SendMessageIntentService.class);
@@ -119,7 +120,7 @@ public class GcmIntentService extends IntentService {
                      Log.i("mydebug", "put extra " + fromPhone);
                      refuse.putExtra("operation", "message");
                     refuse.putExtra("to", fromPhone);
-                    refuse.putExtra("content", helper.REFUSE);
+                    refuse.putExtra("content", Helper.REFUSE);
                     stackBuilder.addNextIntent(refuse);
 
                     PendingIntent refusePendingIntent =
@@ -129,8 +130,21 @@ public class GcmIntentService extends IntentService {
                     builder.addAction(0, "refuse", refusePendingIntent);
 
                 }
-                NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                else if(m.equals(Helper.APPROVED))
+                {
+                    //set click listener on notification
+                    Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
+                    approve.putExtra("loc", 2);
+                    approve.setAction("approve");
 
+                    stackBuilder.addParentStack(MainScreenActivity.class);
+                    stackBuilder.addNextIntent(approve);
+                    PendingIntent approvePendingIntent =
+                            stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
+                    builder.setContentIntent(approvePendingIntent);
+
+                }
+                NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
                 nm.notify(0, builder.build());
             }
         });
