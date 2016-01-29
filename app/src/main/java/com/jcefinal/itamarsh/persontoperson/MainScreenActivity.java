@@ -1,6 +1,7 @@
 package com.jcefinal.itamarsh.persontoperson;
 
 import android.app.AlertDialog;
+import android.app.NotificationManager;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -122,14 +123,24 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         fab.setOnClickListener(this);
         tab.setupWithViewPager(mViewPager);
         Intent i = getIntent();
+        String action = i.getAction();
         int tabToOpen = i.getIntExtra("loc", -1);
+        Log.i(TAG, "Extra is " + tabToOpen);
+        Log.i(TAG, "action is " + action);
         if (tabToOpen!=-1) {
-            m = (TextView) findViewById(R.id.textView);
-            mViewPager.setCurrentItem(1);
-            fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[2]));
-            fab.setImageDrawable(getResources().getDrawable(iconIntArray[2]));
-            play = true;
-            gpsLookout();
+            NotificationManager nm = (NotificationManager)getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            nm.cancel(0);
+            if(action.equals("approve")) {
+                m = (TextView) findViewById(R.id.textView);
+                mViewPager.setCurrentItem(1);
+                fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[2]));
+                fab.setImageDrawable(getResources().getDrawable(iconIntArray[2]));
+                play = true;
+                gpsLookout();
+            }
+            if(action.equals("refuse")) {
+                Log.i(TAG, "refuse pressed");
+            }
         }
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
         tab.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -157,15 +168,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
                 @Override
                 public void onDismiss(DialogInterface dialog) {
-                    String phone =  memory.getString("myphone", "");
-                    new GcmRegistrationAsyncTask(getBaseContext()).execute("register", null, null);
                 }
             });
         }
-        else
-        {
-            new GcmRegistrationAsyncTask(this).execute("register", null, null);
-        }
+
+        sendMessage(getBaseContext(),"register", null, null);
+
     }
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
@@ -181,26 +189,17 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 l.setLongitude(Float.valueOf(location[0]));
                 l.setLatitude(Float.valueOf(location[1]));
                 d = correntLocation.distanceTo(l);
-                Log.i("DISTANCE", ""+d);
+                Log.i("DISTANCE", "" + d);
                 String dtLoc = "Friend Location: "+message+"\nDistance: "+d;
                 TextView locationText = (TextView)findViewById(R.id.distanceText);
                 locationText.setText(dtLoc);
                 TextView m = (TextView) findViewById(R.id.textView);
                 m.setText(loc);
-                locationAlgorithm(d);
             }
         }
     };
 
-    private void locationAlgorithm(float d) {
-        Log.i("ALGO","distance is "+Math.round(d));
-        if (Math.round(d)<=BT_ON_RADIUS){
-            blueTooth();
-        }
-        if (Math.round(d)<=MIN_GPS_RADIUS) {
-            wifi();
-        }
-    }
+
 
     private void wifi() {
         Log.i("ALGO", "WiFi Range");
@@ -345,7 +344,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             public void onLocationChanged(Location location) {
                 correntLocation = location;
                 // Called when a new location is found by the network location provider.
-                new GcmRegistrationAsyncTask(getBaseContext()).execute("message", memory.getString("to", "053"), location.getLongitude() + "," + location.getLatitude());
+                sendMessage(getBaseContext() ,"message", memory.getString("to", "053"), location.getLongitude() + "," + location.getLatitude());
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -504,7 +503,15 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         super.onStop();
 
     }
-
+    public  static  void  sendMessage(Context context, String op, String to, String content)
+    {
+        Intent msgIntent = new Intent(context, SendMessageIntentService.class);
+        Log.i(TAG, "in sendMessage, content" + content );
+        msgIntent.putExtra("operation", op);
+        msgIntent.putExtra("to", to);
+        msgIntent.putExtra("content", content);
+        context.startService(msgIntent);
+    }
 
 
     /**
@@ -531,6 +538,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         private AlertDialog approveDialog;
         private ArrayList list;
         private static final String SENDER_ID = "186698592995";
+        private Helper helper = new Helper();
 
         public PlaceholderFragment() {
         }
@@ -564,7 +572,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-                                        new GcmRegistrationAsyncTask(getContext()).execute("message", dal.getPhone(position), "I Want to Search For You");
+
+                                        sendMessage(getContext(), "message", dal.getPhone(position), helper.REQUEST);
                                     }
                                 })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -589,7 +598,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-                                        new GcmRegistrationAsyncTask(getContext()).execute("message", dal.getPhone(position), "I Want to Search For You");
                                     }
                                 })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -678,6 +686,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         cursorListView.setAdapter(cursorAdapter);
 
     }
+
+
 
 }
 

@@ -10,6 +10,8 @@ import java.security.NoSuchAlgorithmException;
  * This class have global functions that can be used in all other classes
  */
 public class Helper {
+    public static final String REQUEST = "I Want to Search For You";
+    public static final String REFUSE = "Sorry friend. I'm hiding from you ;)";
     /* This function responsible for encoding string to SHA-256*/
     public String encode(String num)
     {

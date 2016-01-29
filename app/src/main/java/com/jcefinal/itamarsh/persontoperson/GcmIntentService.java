@@ -30,6 +30,7 @@ public class GcmIntentService extends IntentService {
     private SharedPreferences memory;
     Context c;
     private SharedPreferences.Editor edit;
+    private Helper helper = new Helper();
     public GcmIntentService() {
         super("GcmIntentService");
     }
@@ -53,7 +54,7 @@ public class GcmIntentService extends IntentService {
                     if (str.contains(",")) {
                         sendMessage(str);
                     } else {
-                        showToast(extras.getString("message"));
+                        showNotification(extras.getString("message"));
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -69,19 +70,20 @@ public class GcmIntentService extends IntentService {
         intent.putExtra("message", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
-    protected void showToast(final String message) {
+    protected void showNotification(final String message) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
                 Context c = getBaseContext();
-                String from = "", m = "";
+                String from = "", m = "", fromPhone = "";
                 Log.i("Here ", message );
                 try {
                     JSONObject responseJSON;
                     DAL dal = new DAL(getBaseContext());
 
                     responseJSON = new JSONObject(message);
-                    from = dal.getName(responseJSON.getString("from"));
+                    fromPhone = responseJSON.getString("from");
+                    from = dal.getName(fromPhone);
                     m = responseJSON.getString("message");
                     memory = getApplication().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
                     edit = memory.edit();
@@ -94,25 +96,44 @@ public class GcmIntentService extends IntentService {
 
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(c);
                 builder.setDefaults(Notification.DEFAULT_ALL);
-                builder.setSmallIcon(R.mipmap.ic_launcher);
+                builder.setSmallIcon(R.drawable.icon);
                 builder.setContentTitle("Find Your Friend");
                 builder.setContentText(from + ": " + m);
                 builder.setAutoCancel(true);
-                //set click listener
-                Intent nmIntent = new Intent(getBaseContext(), MainScreenActivity.class);
-                nmIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                nmIntent.putExtra("loc", 4);
-                TaskStackBuilder stackBuilder = TaskStackBuilder.create(getBaseContext());
-                stackBuilder.addParentStack(MainScreenActivity.class);
-                stackBuilder.addNextIntent(nmIntent);
-                PendingIntent resultPendingIntent =
-                        stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
-                builder.setContentIntent(resultPendingIntent);
-                NotificationManager nm = (NotificationManager)c.getSystemService(Context.NOTIFICATION_SERVICE);
+                if(m.startsWith("I"))
+                 {
+                    //set click listener on approve button
+                    Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
+                    approve.putExtra("loc", 1);
+                    approve.setAction("approve");
+                    TaskStackBuilder stackBuilder = TaskStackBuilder.create(getBaseContext());
+                    stackBuilder.addParentStack(MainScreenActivity.class);
+                    stackBuilder.addNextIntent(approve);
+                    PendingIntent approvePendingIntent =
+                            stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
+                    builder.addAction(0, "approve", approvePendingIntent);
+
+                    //set click listener on refuse button
+                    Intent refuse = new Intent(getBaseContext(), SendMessageIntentService.class);
+                    refuse.setAction("refuse");
+                     Log.i("mydebug", "put extra " + fromPhone);
+                     refuse.putExtra("operation", "message");
+                    refuse.putExtra("to", fromPhone);
+                    refuse.putExtra("content", helper.REFUSE);
+                    stackBuilder.addNextIntent(refuse);
+
+                    PendingIntent refusePendingIntent =
+                            PendingIntent.getService(getBaseContext(), 2, refuse, PendingIntent.FLAG_CANCEL_CURRENT);
+                    builder.setPriority(Notification.PRIORITY_HIGH);
+
+                    builder.addAction(0, "refuse", refusePendingIntent);
+
+                }
+                NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
 
                 nm.notify(0, builder.build());
             }
         });
     }
+
 }

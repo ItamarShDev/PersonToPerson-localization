@@ -1,9 +1,9 @@
-
 package com.jcefinal.itamarsh.persontoperson;
 
+import android.app.IntentService;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -21,62 +21,58 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 
-/*
- * This class responsible for communication with GCM server.
- * prepareOperation - preparing json body to send to server depending on operation required
- * registerToServer - preparing json body for registration to GCM server
- * sendMessage - preparing json body for sending message to other device using GCM server
+/**
+ * Created by olesya on 28-Jan-16.
  */
-class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
+public class SendMessageIntentService extends IntentService {
+    private SharedPreferences memory;
     private GoogleCloudMessaging gcm;
     private Context context;
-    private static final String TAG ="GcmRegistrationAsyncTas";
+    private static final String TAG ="mydebug";
     private static final String SENDER_ID = "186698592995";
     private String token;
     private RequestQueue queue;
     private Helper helper = new Helper();
 
-    public GcmRegistrationAsyncTask(Context context) {
-        this.context = context;
+
+    public SendMessageIntentService()
+    {
+        super("SendMessageIntentService");
+    }
+
+    public SendMessageIntentService(String name) {
+        super(name);
     }
 
     @Override
-    protected String doInBackground(String... params) {
-        Log.d(TAG, "Running");
+    protected void onHandleIntent(Intent intent) {
+        String op = intent.getStringExtra("operation");
+        String to = intent.getStringExtra("to");
+        String content = intent.getStringExtra("content");
+
+
+        Log.i(TAG,"to: " + to);
+        Log.i(TAG, "op " + op);
+        Log.i(TAG, "content" + content);
+        context = getBaseContext();
+        Log.d(TAG, "Running  sendmessage");
         String authorizedEntity = SENDER_ID; // Project id from Google Developer Console
         token = "";
 
         String scope = "GCM";
-        String msg = "";
         try {
             if (gcm == null) {
                 gcm = GoogleCloudMessaging.getInstance(context);
             }
             token = InstanceID.getInstance(context).getToken(authorizedEntity, scope);
-            prepareOperation(params[0], params[1], params[2]);
 
         } catch (IOException ex) {
             Log.d(TAG, "Failed to complete token refresh", ex);
             ex.printStackTrace();
-            msg = "Error: " + ex.getMessage();
         }
-        return msg;
+        prepareOperation(op, to, content);
     }
 
-    @Override
-    protected void onPostExecute(String msg) {
-        Log.i(TAG, "in post execute");
-//        Logger.getLogger("REGISTRATION").log(Level.INFO, msg);
-//        Bundle data = new Bundle();
-//        data.putString("my_message", "G2 say hello!");
-//        data.putString("my_action", "SAY_HELLO");
-//        try {
-//            gcm.send(SENDER_ID + "@gcm.googleapis.com", "2212", data);
-//            Log.d(TAG, "sent message");
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-    }
     /* POST to GCM server using volley library */
     private void sendToServer(String op, JSONObject jo){
         String serverAddr = "http://p2p-gcm-server.appspot.com/"+op;
@@ -103,13 +99,13 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Toast.makeText(context, "Got error", Toast.LENGTH_LONG).show();
-                    try{
-                        Log.i(TAG, error.getMessage());
-                    }
-                    catch (NullPointerException e)
-                    {
-                        Log.i(TAG, "Volley Error");
-                    }
+                        try{
+                            Log.i(TAG, error.getMessage());
+                        }
+                        catch (NullPointerException e)
+                        {
+                            Log.i(TAG, "Volley Error");
+                        }
 
                     }
                 }
@@ -134,7 +130,7 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
         {
             Log.i(TAG, "json error" + e.getMessage());
         }
-        Log.i(TAG, "after building json");
+        Log.i(TAG, "after building json " + jsonBody);
         sendToServer(op, jsonBody);
     }
 
@@ -175,3 +171,4 @@ class GcmRegistrationAsyncTask extends AsyncTask<String, String, String> {
         }
     }
 }
+

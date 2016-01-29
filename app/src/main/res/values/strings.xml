@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">PersonToPerson</string>
+    <string name="app_name">Find Your Friend</string>
     <string name="add_contact_message">Add Contact</string>
     <string name="add_contact_title">Add New Contact</string>
     <string name="phone">Phone Number</string>
