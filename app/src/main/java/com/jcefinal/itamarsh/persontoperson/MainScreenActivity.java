@@ -119,6 +119,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 gpsLookout();
             }
         }
+
+        //********************* Tab Listener  ******************************
         tab.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -136,6 +138,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         });
 
+        //*************************************************************************
+        // prompt for phone number and name only when application first installed *
+        //*************************************************************************
         if (memory.getString("myphone", "").isEmpty()) {
             Log.i(TAG, "in if");
             FirstPageDialog alert = new FirstPageDialog();
@@ -151,6 +156,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         sendMessage(getBaseContext(),"register", null, null);
 
     }
+    //****************************************************************
+    //*        Treatment for notification with location
+    //****************************************************************
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -158,7 +166,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             String message = intent.getStringExtra("message");
             Log.d("receiver", "Got message: " + message);
             float d = 0;
-            if(currentLocation !=null){
+            if(currentLocation != null){
                 String location[] = message.split(",");
                 String loc = "\nYour Location: \n" + String.format("%.2f",currentLocation.getLongitude()) + ","
                         + String.format("%.2f", currentLocation.getLatitude());
@@ -190,8 +198,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         super.onPause();
     }
-    private void setMessage(final int loc) {
 
+    //Private function, used to set message jumping when floating button long pressed
+    private void setMessage(final int loc) {
         switch (loc) {
             case 0:
                 message = "Add Contact";
@@ -202,11 +211,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
+    //*********** Listener for floating button *************
     @Override
     public void onClick(final View view) {
 
         switch (mViewPager.getCurrentItem()) {
-            case 0:
+            case 0: //tab 0 selected, add contact
                 AddContactDialogFragment alert = new AddContactDialogFragment();
                 alert.show(getFragmentManager(), null);
                 alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
@@ -221,7 +231,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
 
                 break;
-            case 1:
+            case 1: // tab 1 selected, stop location transmission
                 m = (TextView) findViewById(R.id.textView);
                 if (play) {
                     fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[1]));
@@ -484,8 +494,15 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-
                                         sendMessage(getContext(), "message", dal.getPhone(position), Helper.REQUEST);
+                                        new AlertDialog.Builder(context)
+                                                .setMessage("Request sent to " + dal.getName(position) + ". You will be notified when your friend reply")
+                                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                                    @Override
+                                                    public void onClick(DialogInterface dialog, int which) {
+                                                    }
+                                                })
+                                                .show();
                                     }
                                 })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
