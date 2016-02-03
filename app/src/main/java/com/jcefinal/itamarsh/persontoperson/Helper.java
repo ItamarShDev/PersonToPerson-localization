@@ -13,6 +13,8 @@ public class Helper {
     public static final String REQUEST = "I Want to Search For You";
     public static final String REFUSE = "Sorry friend. I'm hiding from you ;)";
     public static final String APPROVED = "Commencing search ...";
+    public static final String EXIST = "contact exist";
+    public static final String NOT_EXIST = "contact not exist";
     /* This function responsible for encoding string to SHA-256*/
     public String encode(String num)
     {

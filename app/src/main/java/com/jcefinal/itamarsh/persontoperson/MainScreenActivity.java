@@ -64,6 +64,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private static final String TAG = "myDebug";
     private SharedPreferences memory;
     private Location l, currentLocation;
+    private Context context;
     boolean gpsOn, networkOn;
     private final static int NETWORK_ON=0, WIFI_ON =1, GPS_ON = 2,BT_ON = 3;
 
@@ -81,6 +82,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         play = false;
         setSupportActionBar(toolbar);
         dal = new DAL(this);
+        context = this;
 
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
@@ -154,7 +156,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
 
         sendMessage(getBaseContext(),"register", null, null);
-
     }
     //****************************************************************
     //*        Treatment for notification with location
@@ -224,10 +225,25 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     public void onDismiss(DialogInterface dialog) {
                         Log.e("myDebug", "dialog on dismiss");
                         getContacts();
+                        new AlertDialog.Builder(context)
+                                .setMessage("Sorry, your friend is not registered to our APP. Would you like to invite him?")
+                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                    }
+                                })
+                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+
+                                    }
+                                })
+                                 .show();
                     }
                 });
 
-                Log.e("myDebug", "Add button was pressed, and first tab selected");
+
+                Log.e("myDebug", "action button was pressed, and first tab selected");
 
 
                 break;

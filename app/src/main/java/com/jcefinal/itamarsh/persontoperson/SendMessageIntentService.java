@@ -161,6 +161,23 @@ public class SendMessageIntentService extends IntentService {
         sendToServer(op, jsonBody);
     }
 
+    private void findContact(String to)
+    {
+        String op = "contact";
+        String hashString = helper.encode(to);
+
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("contact", hashString);
+        }
+        catch (JSONException e)
+        {
+            Log.i(TAG, "json error" + e.getMessage());
+        }
+        Log.i(TAG, "in find contact after building json " + jsonBody);
+        sendToServer(op, jsonBody);
+    }
+
     /* prepareOperation - preparing json body to send to server depending on operation required*/
     public void prepareOperation(String op, String to, String message){
         switch (op){
@@ -171,6 +188,8 @@ public class SendMessageIntentService extends IntentService {
                 Log.i(TAG, "send message");
                 sendMessage(to, message);
                 break;
+            case "contact":
+                findContact(to);
         }
     }
 }
