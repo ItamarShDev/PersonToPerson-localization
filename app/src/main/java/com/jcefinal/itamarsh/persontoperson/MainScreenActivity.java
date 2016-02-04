@@ -2,6 +2,7 @@ package com.jcefinal.itamarsh.persontoperson;
 
 import android.app.AlertDialog;
 import android.app.NotificationManager;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -24,6 +25,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -40,6 +42,15 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 
 public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener {
@@ -66,6 +77,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private Location l, currentLocation;
     private Context context;
     boolean gpsOn, networkOn;
+    private Helper helper;
+    private ProgressDialog dialog;
+    private SharedPreferences.Editor edit;
     private final static int NETWORK_ON=0, WIFI_ON =1, GPS_ON = 2,BT_ON = 3;
 
     private ViewPager mViewPager; //The {@link ViewPager} that will host the section contents.
@@ -83,6 +97,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         setSupportActionBar(toolbar);
         dal = new DAL(this);
         context = this;
+        helper = new Helper();
 
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
@@ -151,11 +166,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
                 @Override
                 public void onDismiss(DialogInterface dialog) {
+                    sendMessage(getBaseContext(),"register", null, null);
                 }
             });
         }
-
-        sendMessage(getBaseContext(),"register", null, null);
+        else {
+            sendMessage(getBaseContext(), "register", null, null);
+        }
     }
     //****************************************************************
     //*        Treatment for notification with location
@@ -220,27 +237,47 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             case 0: //tab 0 selected, add contact
                 AddContactDialogFragment alert = new AddContactDialogFragment();
                 alert.show(getFragmentManager(), null);
+
                 alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
                         Log.e("myDebug", "dialog on dismiss");
                         getContacts();
-                        new AlertDialog.Builder(context)
-                                .setMessage("Sorry, your friend is not registered to our APP. Would you like to invite him?")
-                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                    }
-                                })
-                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-
-                                    }
-                                })
-                                 .show();
-                    }
+                        Log.i(TAG, "not_exist " + memory.getBoolean("not_exist", false));
+                        if(memory.getBoolean("add", false))
+                            findContact();
+//                        if (memory.getBoolean("not_exist", false))
+//                        {
+//                            new AlertDialog.Builder(context)
+//                                .setMessage("Sorry, your friend is not registered to our APP. Would you like to invite him?")
+//                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+//                                    @Override
+//                                    public void onClick(DialogInterface dialog, int which) {
+//                                        SmsManager smsManager = SmsManager.getDefault();
+//
+//                                            try {
+//                                                smsManager.sendTextMessage(memory.getString("to", ""), null, "Hi, I would like to invite you to \"Find your Friend\" application - " +
+//                                                        "the app that helps you to find friends in crowded place. Please go to this link to download it: " +
+//                                                        "https://github.com/olesyash/Find_Your_Friends/wiki", null, null);
+//                                                Log.i(TAG, "sending message");
+//                                                } catch (Exception e) {
+//                                                    Toast.makeText(getApplicationContext(), "SMS failed, please try again.", Toast.LENGTH_LONG).show();
+//                                                    e.printStackTrace();
+//                                                }
+//
+//                                        }
+//                                })
+//                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+//                                    @Override
+//                                    public void onClick(DialogInterface dialog, int which) {
+//
+//                                    }
+//                                })
+//                                 .show();
+//                    }
+                   }
                 });
+
 
 
                 Log.e("myDebug", "action button was pressed, and first tab selected");
@@ -459,6 +496,106 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         context.startService(msgIntent);
     }
 
+
+
+    public void findContact()
+    {
+        String op = "contact";
+        String hashString = helper.encode(memory.getString("to",""));
+
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("contact", hashString);
+        }
+        catch (JSONException e)
+        {
+            Log.i(TAG, "json error" + e.getMessage());
+        }
+        Log.i(TAG, "in find contact after building json " + jsonBody);
+        sendToServer(op, jsonBody);
+    }
+
+    public void sendToServer(String op, JSONObject jo){
+        String serverAddr = "http://p2p-gcm-server.appspot.com/"+op;
+        context = this;
+        RequestQueue queue = Volley.newRequestQueue(getBaseContext());
+
+        dialog = new ProgressDialog(this);
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.show();
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.POST,
+                serverAddr,
+                jo,
+                new Response.Listener<JSONObject>()
+                {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        try {
+                            dialog.cancel();
+                            String res = response.getString("response");
+                            Log.i(TAG, "response is: " + res);
+                            if(res.equals(Helper.EXIST))
+                                dal.addEntries(memory.getString("name", "almoni"), memory.getString("to",""));
+                            else
+                            {
+                                edit = memory.edit();
+                                edit.putBoolean("not_exist", true);
+                                edit.apply();
+                                Toast.makeText(context, "contact won't be added", Toast.LENGTH_LONG).show();
+                                new AlertDialog.Builder(context)
+                                        .setMessage("Sorry, your friend is not registered to our APP. Would you like to invite him?")
+                                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                SmsManager smsManager = SmsManager.getDefault();
+                                                try {
+                                                    smsManager.sendTextMessage(memory.getString("to", ""), null, "Hi, I would like to invite you to \"Find your Friend\" application." +
+                                                            " Please go to this link to download it: " +
+                                                            "https://github.com/olesyash/Find_Your_Friends/wiki", null, null);
+                                                    Log.i(TAG, "sending message");
+                                                    } catch (Exception e) {
+                                                        Toast.makeText(getApplicationContext(), "SMS failed, please try again.", Toast.LENGTH_LONG).show();
+                                                        e.printStackTrace();
+                                                    }
+                                                }
+                                        })
+                                        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+
+                                            }
+                                        })
+                                        .show();
+                            }
+                        }
+                        catch (JSONException e)
+                        {
+                            Log.i(TAG,"Error on response " +  e.getMessage());
+                        }
+                    }
+                },
+                new Response.ErrorListener(){
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        dialog.cancel();
+                        Toast.makeText(context, "Got error", Toast.LENGTH_LONG).show();
+                        try{
+                            Log.i(TAG, error.getMessage());
+                        }
+                        catch (NullPointerException e)
+                        {
+                            Log.i(TAG, "Volley Error");
+                        }
+
+                    }
+                }
+
+        );
+        request.setTag("REQUEST");
+        queue.add(request);
+    }
 
     /**
      * A placeholder fragment containing a simple view.

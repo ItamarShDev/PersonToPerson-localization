@@ -28,9 +28,7 @@ import java.util.logging.Logger;
  */
 public class GcmIntentService extends IntentService {
     private SharedPreferences memory;
-    Context c;
     private SharedPreferences.Editor edit;
-    private Helper helper = new Helper();
     public GcmIntentService() {
         super("GcmIntentService");
     }
