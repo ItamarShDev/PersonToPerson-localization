@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -16,6 +17,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -42,6 +44,7 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -49,11 +52,15 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+
 
 public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener {
+    private static final int MY_SOCKET_TIMEOUT_MS = 10000;
     /*Define variables */
     private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
@@ -173,6 +180,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         else {
             sendMessage(getBaseContext(), "register", null, null);
         }
+
+        readContacts();
     }
     //****************************************************************
     //*        Treatment for notification with location
@@ -244,37 +253,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                         Log.e("myDebug", "dialog on dismiss");
                         getContacts();
                         Log.i(TAG, "not_exist " + memory.getBoolean("not_exist", false));
-                        if(memory.getBoolean("add", false))
-                            findContact();
-//                        if (memory.getBoolean("not_exist", false))
-//                        {
-//                            new AlertDialog.Builder(context)
-//                                .setMessage("Sorry, your friend is not registered to our APP. Would you like to invite him?")
-//                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-//                                    @Override
-//                                    public void onClick(DialogInterface dialog, int which) {
-//                                        SmsManager smsManager = SmsManager.getDefault();
-//
-//                                            try {
-//                                                smsManager.sendTextMessage(memory.getString("to", ""), null, "Hi, I would like to invite you to \"Find your Friend\" application - " +
-//                                                        "the app that helps you to find friends in crowded place. Please go to this link to download it: " +
-//                                                        "https://github.com/olesyash/Find_Your_Friends/wiki", null, null);
-//                                                Log.i(TAG, "sending message");
-//                                                } catch (Exception e) {
-//                                                    Toast.makeText(getApplicationContext(), "SMS failed, please try again.", Toast.LENGTH_LONG).show();
-//                                                    e.printStackTrace();
-//                                                }
-//
-//                                        }
-//                                })
-//                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-//                                    @Override
-//                                    public void onClick(DialogInterface dialog, int which) {
-//
-//                                    }
-//                                })
-//                                 .show();
-//                    }
+                        if(memory.getBoolean("add", false)) {
+                            ArrayList<String> l = new ArrayList<String>();
+                            ArrayList<String> l2 = new ArrayList<String>();
+                            l.add(memory.getString("to", ""));
+                            l2.add(memory.getString("name",""));
+                            sendToServer(1, l, l2);
+                        }
                    }
                 });
 
@@ -489,36 +474,34 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     public  static  void  sendMessage(Context context, String op, String to, String content)
     {
         Intent msgIntent = new Intent(context, SendMessageIntentService.class);
-        Log.i(TAG, "in sendMessage, content" + content );
+        Log.i(TAG, "in sendMessage, content" + content);
         msgIntent.putExtra("operation", op);
         msgIntent.putExtra("to", to);
         msgIntent.putExtra("content", content);
         context.startService(msgIntent);
     }
 
+    public void sendToServer(final int src, final ArrayList<String> phoneList, final ArrayList<String> names){
+        String serverAddr = "http://p2p-gcm-server.appspot.com/contacts";
+        context = this;
+        RequestQueue queue = Volley.newRequestQueue(getBaseContext());
+        ArrayList<String> list = new ArrayList<String>();
 
-
-    public void findContact()
-    {
-        String op = "contact";
-        String hashString = helper.encode(memory.getString("to",""));
-
+        for (String i: phoneList)
+        {
+            list.add(helper.encode(i));
+        }
+        JSONArray arr = new JSONArray(list);
+        Log.i(TAG, "json array" + arr);
         JSONObject jsonBody = new JSONObject();
         try {
-            jsonBody.put("contact", hashString);
+            jsonBody.put("contacts", arr);
         }
         catch (JSONException e)
         {
             Log.i(TAG, "json error" + e.getMessage());
         }
         Log.i(TAG, "in find contact after building json " + jsonBody);
-        sendToServer(op, jsonBody);
-    }
-
-    public void sendToServer(String op, JSONObject jo){
-        String serverAddr = "http://p2p-gcm-server.appspot.com/"+op;
-        context = this;
-        RequestQueue queue = Volley.newRequestQueue(getBaseContext());
 
         dialog = new ProgressDialog(this);
         dialog.setCancelable(false);
@@ -527,53 +510,36 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         JsonObjectRequest request = new JsonObjectRequest(
                 Request.Method.POST,
                 serverAddr,
-                jo,
+                jsonBody,
                 new Response.Listener<JSONObject>()
                 {
                     @Override
                     public void onResponse(JSONObject response) {
                         try {
                             dialog.cancel();
-                            String res = response.getString("response");
-                            Log.i(TAG, "response is: " + res);
-                            if(res.equals(Helper.EXIST))
-                                dal.addEntries(memory.getString("name", "almoni"), memory.getString("to",""));
-                            else
-                            {
-                                edit = memory.edit();
-                                edit.putBoolean("not_exist", true);
-                                edit.apply();
-                                Toast.makeText(context, "contact won't be added", Toast.LENGTH_LONG).show();
-                                new AlertDialog.Builder(context)
-                                        .setMessage("Sorry, your friend is not registered to our APP. Would you like to invite him?")
-                                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-                                                SmsManager smsManager = SmsManager.getDefault();
-                                                try {
-                                                    smsManager.sendTextMessage(memory.getString("to", ""), null, "Hi, I would like to invite you to \"Find your Friend\" application." +
-                                                            " Please go to this link to download it: " +
-                                                            "https://github.com/olesyash/Find_Your_Friends/wiki", null, null);
-                                                    Log.i(TAG, "sending message");
-                                                    } catch (Exception e) {
-                                                        Toast.makeText(getApplicationContext(), "SMS failed, please try again.", Toast.LENGTH_LONG).show();
-                                                        e.printStackTrace();
-                                                    }
-                                                }
-                                        })
-                                        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-
-                                            }
-                                        })
-                                        .show();
+                            JSONArray result = response.getJSONArray("response");
+                            Log.i(TAG, "response is: " + result);
+                            for(int i=0; i<result.length();i++) {
+                                String phone = result.get(i).toString().replace("\n", "").trim();
+                                for (int j = 0; j < phoneList.size(); j++) {
+                                    Log.i(TAG, "after encode " + helper.encode(phoneList.get(j)).trim());
+                                    if (phone.equals(helper.encode(phoneList.get(j)).trim())) {
+                                        Log.i(TAG, "you did it!");
+                                        dal.addEntries(names.get(j), phoneList.get(j));
+                                    }
+                                    else
+                                    {
+                                        if(src == 1)
+                                            inviteFriend();
+                                    }
+                                }
                             }
-                        }
+                            }
                         catch (JSONException e)
                         {
                             Log.i(TAG,"Error on response " +  e.getMessage());
                         }
+                        getContacts();
                     }
                 },
                 new Response.ErrorListener(){
@@ -582,7 +548,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                         dialog.cancel();
                         Toast.makeText(context, "Got error", Toast.LENGTH_LONG).show();
                         try{
-                            Log.i(TAG, error.getMessage());
+                            Log.i(TAG, error.toString());
                         }
                         catch (NullPointerException e)
                         {
@@ -593,9 +559,84 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 }
 
         );
+        request.setRetryPolicy(new DefaultRetryPolicy(
+                MY_SOCKET_TIMEOUT_MS,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         request.setTag("REQUEST");
         queue.add(request);
     }
+
+    public void inviteFriend()
+    {
+        Toast.makeText(context, "contact won't be added", Toast.LENGTH_LONG).show();
+        new AlertDialog.Builder(context)
+                .setMessage("Sorry, your friend is not registered to our APP. Would you like to invite him?")
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        SmsManager smsManager = SmsManager.getDefault();
+                        try {
+                            smsManager.sendTextMessage(memory.getString("to", ""), null, "Hi, I would like to invite you to \"Find your Friend\" application." +
+                                    " Please go to this link to download it: " +
+                                    "https://github.com/olesyash/Find_Your_Friends/wiki", null, null);
+                            Log.i(TAG, "sending message");
+                        } catch (Exception e) {
+                            Toast.makeText(getApplicationContext(), "SMS failed, please try again.", Toast.LENGTH_LONG).show();
+                            e.printStackTrace();
+                        }
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                    }
+                })
+                .show();
+    }
+
+
+    public void readContacts() {
+        ContentResolver cr = getContentResolver();
+        Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
+        String phone = null;
+        String id = "";
+        ArrayList<String> listPhones = new ArrayList<String>();
+        ArrayList<String> listNames = new ArrayList<String>();
+        if (cur.getCount() > 0) {
+            while (cur.moveToNext()) {
+                id = cur.getString(cur.getColumnIndex(ContactsContract.Contacts._ID));
+
+                String name = cur.getString(cur.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                if (Integer.parseInt(cur.getString(cur.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER))) > 0) {
+
+                    Cursor pCur = cr.query(
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?", new String[]{id}, null);
+                    pCur.moveToNext();
+                    phone = pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+
+                    //String hashString = helper.encode(phone);
+                    listPhones.add(phone);
+                    listNames.add(name);
+                    pCur.close();
+                }
+            }
+        }
+        for (String name : listNames)
+            Log.i(TAG, "Contact Name:" + name);
+        for(String pho: listPhones)
+            Log.i(TAG, "Phone number" + pho);
+
+        sendToServer(2, listPhones, listNames);
+
+        cur.close();
+        }
+
+
+
+
+
 
     /**
      * A placeholder fragment containing a simple view.
