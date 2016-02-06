@@ -503,10 +503,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
         Log.i(TAG, "in find contact after building json " + jsonBody);
 
+
         dialog = new ProgressDialog(this);
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
-        dialog.show();
+        if(src == 1) {
+            dialog.show();
+        }
         JsonObjectRequest request = new JsonObjectRequest(
                 Request.Method.POST,
                 serverAddr,
