@@ -9,7 +9,7 @@ import android.database.sqlite.SQLiteOpenHelper;
  * This class responsible for creating DB in SQLIte and dropping it on version change
  */
 public class ContactsDBHelper extends SQLiteOpenHelper{
-public static final int DATABASE_VER = 1;
+public static final int DATABASE_VER = 2;
 public static final String DB_NAME = "contacts.db";
         public ContactsDBHelper(Context context)
         {
@@ -21,7 +21,8 @@ public static final String DB_NAME = "contacts.db";
                     " INTEGER PRIMARY KEY AUTOINCREMENT," + Contacts.ContactsTable.userID + " TEXT, "
                     + Contacts.ContactsTable.userName + " TEXT, "
                     + Contacts.ContactsTable.phoneNum + " TEXT, "
-                    + Contacts.ContactsTable.hashedPhone + " TEXT "
+                    + Contacts.ContactsTable.hashedPhone + " TEXT, "
+                    + "UNIQUE("+ Contacts.ContactsTable.phoneNum + ")"
                     + ");");
 
         }

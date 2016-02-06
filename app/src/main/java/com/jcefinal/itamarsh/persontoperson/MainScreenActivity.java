@@ -522,7 +522,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                             for(int i=0; i<result.length();i++) {
                                 String phone = result.get(i).toString().replace("\n", "").trim();
                                 for (int j = 0; j < phoneList.size(); j++) {
-                                    Log.i(TAG, "after encode " + helper.encode(phoneList.get(j)).trim());
                                     if (phone.equals(helper.encode(phoneList.get(j)).trim())) {
                                         Log.i(TAG, "you did it!");
                                         dal.addEntries(names.get(j), phoneList.get(j));

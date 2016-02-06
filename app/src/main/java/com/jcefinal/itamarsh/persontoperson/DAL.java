@@ -27,15 +27,7 @@ public class DAL {
         return cursor;
 
     }
-    public void addIDEntry(String id)
-    {
-        db = cdh.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(Contacts.ContactsTable.userID, id);
-        db.insert(Contacts.ContactsTable.TABLE_NAME, null, values);
-        db.close();
 
-    }
     public void addEntries(String name,String phone)
     {
         db = cdh.getWritableDatabase();
@@ -76,4 +68,5 @@ public class DAL {
         String phone = cursor.getString(timeIndex);
         return phone;
     }
+   // public Cursor checkPhoneExist
 }
