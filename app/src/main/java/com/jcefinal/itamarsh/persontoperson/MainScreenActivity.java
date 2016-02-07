@@ -180,8 +180,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         else {
             sendMessage(getBaseContext(), "register", null, null);
         }
-
-        readContacts();
+        if (tabToOpen == -1)
+            readContacts();
     }
     //****************************************************************
     //*        Treatment for notification with location
