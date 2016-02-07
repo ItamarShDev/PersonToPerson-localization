@@ -47,14 +47,18 @@ public class GcmIntentService extends IntentService {
                 Log.e("Bundle", "Got message");
                 Log.e("Bundle", m);
                 try {
-                    JSONObject js = new JSONObject(extras.getString("message"));
+                    JSONObject js = new JSONObject(m);
                     String str = js.getString("message");
+                    Log.i("bundle", "str " + str);
                     if (str.contains(",")) {
+                        Log.i("bundle", "in if");
                         sendMessage(str);
                     } else {
+                        Log.i("bundle", "in else");
                         showNotification(extras.getString("message"));
                     }
                 } catch (JSONException e) {
+                    Log.i("bundle","json exception");
                     e.printStackTrace();
                 }
 
@@ -74,7 +78,7 @@ public class GcmIntentService extends IntentService {
             public void run() {
                 Context c = getBaseContext();
                 String from = "", m = "", fromPhone = "";
-                Log.i("Here ", message );
+                Log.i("MyDebug",  "in show notification" + message );
                 try {
                     JSONObject responseJSON;
                     DAL dal = new DAL(getBaseContext());

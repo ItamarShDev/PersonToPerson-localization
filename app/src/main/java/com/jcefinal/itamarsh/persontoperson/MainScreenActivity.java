@@ -529,14 +529,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                         Log.i(TAG, "you did it!");
                                         dal.addEntries(names.get(j), phoneList.get(j));
                                     }
-                                    else
-                                    {
-                                        if(src == 1)
-                                            inviteFriend();
-                                    }
                                 }
                             }
-                            }
+                           if(result.length()== 0 && src == 1)
+                            {
+                                inviteFriend();
+                            }                         }
                         catch (JSONException e)
                         {
                             Log.i(TAG,"Error on response " +  e.getMessage());
@@ -618,7 +616,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     pCur.moveToNext();
                     phone = pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
 
-                    //String hashString = helper.encode(phone);
                     listPhones.add(phone);
                     listNames.add(name);
                     pCur.close();

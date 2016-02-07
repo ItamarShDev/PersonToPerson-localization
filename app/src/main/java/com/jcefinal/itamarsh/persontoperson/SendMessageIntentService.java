@@ -103,7 +103,8 @@ public class SendMessageIntentService extends IntentService {
                     public void onErrorResponse(VolleyError error) {
                         Toast.makeText(context, "Got error", Toast.LENGTH_LONG).show();
                         try{
-                            Log.i(TAG, error.getMessage());
+
+                            Log.i(TAG, error.toString());
                         }
                         catch (NullPointerException e)
                         {
@@ -123,8 +124,10 @@ public class SendMessageIntentService extends IntentService {
     public void sendMessage(String to,String message){
         String op = "message";
         JSONObject jsonBody = new JSONObject();
+        memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
+        String myPhone = helper.encode(memory.getString("myphone", ""));
         try {
-            jsonBody.put("from", token);
+            jsonBody.put("from", myPhone);
             jsonBody.put("to", to);
             jsonBody.put("message", message);
 
