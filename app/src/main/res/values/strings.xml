@@ -108,4 +108,5 @@
     <string name="enterPhoneString">Please enter your phone number and your name:</string>
     <string name="requestSentString">Request sent to</string>
     <string name="requestSentBodyString">Hi! Your request is now sent to your friend. Please wait patiently for the response. You will be notified about the decision</string>
+    <string name="distanceString">Distance</string>
 </resources>

@@ -26,7 +26,13 @@
         android:layout_height="wrap_content"
         android:minLines="2"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Large Text"
+        android:text="@string/distanceString"
         android:id="@+id/distanceText" />
+
+    <com.jcefinal.itamarsh.persontoperson.CompassView
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:id="@+id/myView"
+        android:layout_gravity="center_horizontal" />
 
 </LinearLayout>

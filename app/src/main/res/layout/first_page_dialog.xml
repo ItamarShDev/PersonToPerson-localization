@@ -29,6 +29,15 @@
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:inputType="textPersonName"
+        android:hint="@string/add_contact_name"
+        android:ems="10"
+        android:id="@+id/editTextUserName"
+        android:layout_gravity="center_horizontal" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:inputType="phone"
         android:ems="10"
         android:id="@+id/editTextPhone"
@@ -36,12 +45,4 @@
         android:layout_weight="0.05"
         android:hint="@string/phone"/>
 
-    <EditText
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="textPersonName"
-        android:hint="@string/add_contact_name"
-        android:ems="10"
-        android:id="@+id/editTextUserName"
-        android:layout_gravity="center_horizontal" />
 </LinearLayout>

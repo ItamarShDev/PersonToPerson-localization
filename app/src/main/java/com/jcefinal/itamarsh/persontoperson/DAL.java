@@ -47,7 +47,12 @@ public class DAL {
         do{
             cursor.moveToPosition(position);
             int timeIndex = cursor.getColumnIndex(Contacts.ContactsTable.hashedPhone);
-            name = cursor.getString(timeIndex);
+            if(timeIndex != -1) {
+                name = cursor.getString(timeIndex);
+            }
+            else{
+                name = "New Friend";
+            }
         position++;
         }
         while(!name.equals(phone)&&(position<cursor.getCount()));

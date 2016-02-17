@@ -11,6 +11,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -59,12 +63,10 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 
-public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener {
+public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
     private static final int MY_SOCKET_TIMEOUT_MS = 10000;
     /*Define variables */
-    private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
-    private WifiP2pManager.Channel mChannel;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
     public int[] colorIntArray = {R.color.blue, R.color.dark_pink, R.color.red};
@@ -79,14 +81,19 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private LocationListener locationListener;
     private DAL dal;
     private ListView cursorListView;
+    private CompassView compassView;
+    private SensorManager mSensorManager;
+    private Sensor mOrientation;
+    private float azimuth = 0; // degree
     private static final String TAG = "myDebug";
     private SharedPreferences memory;
-    private Location l, currentLocation;
+    private Location currentLocation, target;
     private Context context;
     boolean gpsOn, networkOn;
     private Helper helper;
     private ProgressDialog dialog;
-    private SharedPreferences.Editor edit;
+    private boolean flag = true;
+    private SensorEventListener sensorEventListener;
     private final static int NETWORK_ON=0, WIFI_ON =1, GPS_ON = 2,BT_ON = 3;
 
     private ViewPager mViewPager; //The {@link ViewPager} that will host the section contents.
@@ -98,13 +105,14 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         initViews();
 
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
-        mChannel = mManager.initialize(this, getMainLooper(), null);
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
         play = false;
         setSupportActionBar(toolbar);
         dal = new DAL(this);
         context = this;
         helper = new Helper();
+        sensorEventListener = this;
+
 
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
@@ -113,7 +121,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         mSectionsPagerAdapter.addFragment(new PlaceholderFragment());
         // Set up the ViewPager with the sections adapter.
         mViewPager.setAdapter(mSectionsPagerAdapter);
-        l = new Location("");
+        target = new Location("");
         //FLOATING BUTTON
         fab.setOnLongClickListener(this);
         fab.setOnClickListener(this);
@@ -189,6 +197,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            if(flag) {
+                mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+                mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+                mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
+                flag = false;
+            }
             // Extract data included in the Intent
             String message = intent.getStringExtra("message");
             Log.d("receiver", "Got message: " + message);
@@ -197,11 +211,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 String location[] = message.split(",");
                 String loc = "\nYour Location: \n" + String.format("%.2f",currentLocation.getLongitude()) + ","
                         + String.format("%.2f", currentLocation.getLatitude());
-                l.setLongitude(Float.valueOf(location[0]));
-                l.setLatitude(Float.valueOf(location[1]));
+                target.setLongitude(Float.valueOf(location[0]));
+                target.setLatitude(Float.valueOf(location[1]));
                 float l1 = Float.valueOf(location[0]);
                 float l2 = Float.valueOf(location[1]);
-                d = currentLocation.distanceTo(l);
+                d = currentLocation.distanceTo(target);
                 Log.i("DISTANCE", "" + d);
                 String dtLoc = "Friend Location: "+ String.format("%.2f", l1) +',' + String.format("%.2f",l2) +"\nDistance: "+
                         String.format("%.2f",d);
@@ -218,11 +232,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         super.onResume();
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter("my-event"));
+      //  mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
     }
     @Override
     protected void onPause() {
         // Unregister since the activity is not visible
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
+        flag = true;
         super.onPause();
     }
 
@@ -340,6 +356,44 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         });
     }
+
+    private void getDirection()
+    {
+        compassView = (CompassView)findViewById(R.id.myView);
+        double angle = 0;
+        if(currentLocation != null) {
+            angle = calculateAngle(currentLocation.getLongitude(), currentLocation.getLatitude(), target.getLongitude(), target.getLatitude());
+        }
+        //Correction;
+        angle-=90;
+        //Correction for azimuth
+        angle-=azimuth;
+        while(angle<0)angle=angle+360;
+        if(compassView != null) {
+            compassView.angle = (float) angle;
+            compassView.invalidate();
+        }
+    }
+
+    public void onSensorChanged(SensorEvent event) {
+        azimuth = event.values[0];
+        Log.i("mydebug","azimuth " + azimuth);
+        getDirection();
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+    }
+
+    private static double calculateAngle(double x1, double y1, double x2,
+                                        double y2) {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+
+        return (Math.atan2(dx, dy) * 180) / Math.PI;
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         // Check which request we're responding to
@@ -613,11 +667,15 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
                     Cursor pCur = cr.query(
                             ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?", new String[]{id}, null);
-                    pCur.moveToNext();
-                    phone = pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-
-                    listPhones.add(phone);
-                    listNames.add(name);
+                    if(pCur.moveToNext())
+                    {
+                        phone = pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                        phone = phone.replace(" ", "");
+                        phone = phone.replace("-", "");
+                        phone = phone.replace("+972", "0");
+                        listPhones.add(phone);
+                        listNames.add(name);
+                    }
                     pCur.close();
                 }
             }
@@ -761,8 +819,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         @Override
         public void onResume() {
             super.onResume();
-
-
         }
 
         private void updateList() {
@@ -796,6 +852,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         fab = (FloatingActionButton) findViewById(R.id.fab);
         tab = (TabLayout) findViewById(R.id.tabs);
         cursorListView = (ListView) findViewById(R.id.cursorListView);
+        compassView = (CompassView)findViewById(R.id.myView);
 
     }
 
