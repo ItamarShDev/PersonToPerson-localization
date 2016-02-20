@@ -147,7 +147,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             sendMessage(getBaseContext(), "register", null, null);
         }
 
-
         /***************************************************
         * Treatment for opening activity from notification *
         ***************************************************/

@@ -136,6 +136,8 @@ public class GcmIntentService extends IntentService {
                     builder.setPriority(Notification.PRIORITY_HIGH);
 
                     builder.addAction(0, "refuse", refusePendingIntent);
+                     NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                     nm.notify(0, builder.build());
 
                 }
                 else if(m.equals(Helper.APPROVED))
@@ -151,10 +153,10 @@ public class GcmIntentService extends IntentService {
                     PendingIntent approvePendingIntent =
                             stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
                     builder.setContentIntent(approvePendingIntent);
-
+                    NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                    nm.notify(1, builder.build());
                 }
-                NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-                nm.notify(0, builder.build());
+
             }
         });
     }
