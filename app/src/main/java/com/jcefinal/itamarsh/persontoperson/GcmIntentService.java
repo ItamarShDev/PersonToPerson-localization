@@ -8,6 +8,11 @@ import android.app.TaskStackBuilder;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -84,7 +89,7 @@ public class GcmIntentService extends IntentService {
             public void run() {
                 Context c = getBaseContext();
                 String from = "", m = "", fromPhone = "";
-                Log.i("MyDebug",  "in show notification" + message );
+                Log.i("MyDebug", "in show notification" + message);
                 try {
                     JSONObject responseJSON;
                     DAL dal = new DAL(getBaseContext());
@@ -103,7 +108,14 @@ public class GcmIntentService extends IntentService {
                 }
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(c);
                 builder.setDefaults(Notification.DEFAULT_ALL);
-                builder.setSmallIcon(R.drawable.icon);
+                if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP){
+                    Bitmap bm = BitmapFactory.decodeResource(getResources(), R.drawable.icon);
+                    builder.setLargeIcon(bm);
+                    builder.setSmallIcon(R.drawable.ic_message_black_24dp);
+                }
+                else {
+                    builder.setSmallIcon(R.drawable.icon);
+                }
                 builder.setContentTitle("Find Your Friend");
                 builder.setContentText(from + ": " + m);
                 builder.setAutoCancel(true);
@@ -114,6 +126,7 @@ public class GcmIntentService extends IntentService {
                      Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
                      approve.putExtra("loc", 1);
                      approve.setAction("approve");
+                     approve.putExtra("to", fromPhone);
 
                      stackBuilder.addParentStack(MainScreenActivity.class);
                      stackBuilder.addNextIntent(approve);
@@ -156,7 +169,41 @@ public class GcmIntentService extends IntentService {
                     NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
                     nm.notify(1, builder.build());
                 }
-
+                else if(m.equals(Helper.REFUSE))
+                {
+                    Log.i("REFUSED", "Got refused from " + from);
+                    //set click listener on notification
+                    NotificationCompat.InboxStyle inboxStyle =
+                            new NotificationCompat.InboxStyle();
+                    inboxStyle.setBigContentTitle("Search Refused");
+                    inboxStyle.addLine("From: "+from);
+                    inboxStyle.addLine(m);
+                    builder.setStyle(inboxStyle);
+                    stackBuilder.addParentStack(MainScreenActivity.class);
+                    NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                    nm.notify(1, builder.build());
+                }
+                else if(m.equals(Helper.STOP_SEARCH))
+                {
+                    Log.i("SEARCH_STOPPED", "Search from " + from + " stopped");
+                    //set click listener on notification
+                    NotificationCompat.InboxStyle inboxStyle =
+                            new NotificationCompat.InboxStyle();
+                    inboxStyle.setBigContentTitle("Search Refused");
+                    inboxStyle.addLine("From: " + from);
+                    inboxStyle.addLine("The Search Has Been Stopped by the User");
+                    builder.setStyle(inboxStyle);
+                    Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
+                    approve.putExtra("loc", 3);
+                    approve.setAction("stop_search");
+                    stackBuilder.addParentStack(MainScreenActivity.class);
+                    stackBuilder.addNextIntent(approve);
+                    PendingIntent approvePendingIntent =
+                            stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
+                    builder.setContentIntent(approvePendingIntent);
+                    NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                    nm.notify(1, builder.build());
+                }
             }
         });
     }

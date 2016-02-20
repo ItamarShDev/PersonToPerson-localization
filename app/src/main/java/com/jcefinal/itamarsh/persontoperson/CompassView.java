@@ -64,9 +64,6 @@ public class CompassView extends View {
         super.onDraw(canvas);
         path.reset();
 
-        Log.i("mydebug", "in draw, degrees " + angle);
-
-
         Rect rect = canvas.getClipBounds();
 
         height = rect.bottom-rect.top;

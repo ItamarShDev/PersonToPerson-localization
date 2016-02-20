@@ -7,16 +7,8 @@
         android:gravity="center"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="BT disabled"
-        android:id="@+id/textView3"
-        android:layout_gravity="center_horizontal" />
-
-    <TextView
-        android:gravity="center"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Your Location Here"
+        android:text="Your Location"
         android:id="@+id/textView"
         android:layout_gravity="center_horizontal" />
 

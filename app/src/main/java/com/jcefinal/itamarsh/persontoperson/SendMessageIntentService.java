@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -78,7 +79,7 @@ public class SendMessageIntentService extends IntentService {
 
     /* POST to GCM server using volley library */
     private void sendToServer(String op, JSONObject jo){
-        String serverAddr = "http://p2p-gcm-server.appspot.com/"+op;
+        String serverAddr = Helper.SERVER_ADDR+op;
         queue = Volley.newRequestQueue(context);
         JsonObjectRequest request = new JsonObjectRequest(
                 Request.Method.POST,
@@ -105,6 +106,8 @@ public class SendMessageIntentService extends IntentService {
                         try{
 
                             Log.i(TAG, error.toString());
+                            Log.i(TAG, error.getLocalizedMessage());
+
                         }
                         catch (NullPointerException e)
                         {
@@ -113,8 +116,12 @@ public class SendMessageIntentService extends IntentService {
 
                     }
                 }
-
         );
+        request.setRetryPolicy(new DefaultRetryPolicy(
+                Helper.MY_SOCKET_TIMEOUT_MS,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        request.setTag("REQUEST");
         request.setTag("REQUEST");
         queue.add(request);
     }
