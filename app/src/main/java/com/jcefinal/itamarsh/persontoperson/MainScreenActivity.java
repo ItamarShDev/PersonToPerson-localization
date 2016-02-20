@@ -128,6 +128,26 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         fab.setOnClickListener(this);
         tab.setupWithViewPager(mViewPager);
 
+        //*************************************************************************
+        // prompt for phone number and name only when application first installed *
+        //*************************************************************************
+        if (memory.getString("myphone", "").isEmpty()) {
+            Log.i(TAG, "in if");
+            FirstPageDialog alert = new FirstPageDialog();
+            alert.setCancelable(false);
+            alert.show(getFragmentManager(), null);
+            alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    sendMessage(getBaseContext(),"register", null, null);
+                }
+            });
+        }
+        else {
+            sendMessage(getBaseContext(), "register", null, null);
+        }
+
+
         /***************************************************
         * Treatment for opening activity from notification *
         ***************************************************/
@@ -150,6 +170,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 gpsLookout();
             }
         }
+        else {
+            readContacts();
+        }
+
                 //********************* Tab Listener  ******************************
         tab.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
@@ -168,26 +192,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         });
 
-        //*************************************************************************
-        // prompt for phone number and name only when application first installed *
-        //*************************************************************************
-        if (memory.getString("myphone", "").isEmpty()) {
-            Log.i(TAG, "in if");
-            FirstPageDialog alert = new FirstPageDialog();
-            alert.setCancelable(false);
-            alert.show(getFragmentManager(), null);
-            alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                    sendMessage(getBaseContext(),"register", null, null);
-                }
-            });
-        }
-        else {
-            sendMessage(getBaseContext(), "register", null, null);
-        }
-        if (tabToOpen == -1)
-            readContacts();
+
     }
     private void setSearchStatus(boolean status){
     if(status){
@@ -615,7 +620,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                 String phone = result.get(i).toString().replace("\n", "").trim();
                                 for (int j = 0; j < phoneList.size(); j++) {
                                     if (phone.equals(helper.encode(phoneList.get(j)).trim())) {
-                                        Log.i(TAG, "you did it!");
                                         dal.addEntries(names.get(j), phoneList.get(j));
                                     }
                                 }
@@ -635,7 +639,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         dialog.cancel();
-                        Toast.makeText(context, "Got error", Toast.LENGTH_LONG).show();
                         try{
                             Log.i(TAG, error.toString());
                         }
@@ -715,13 +718,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 }
             }
         }
-        for (String name : listNames)
-            Log.i(TAG, "Contact Name:" + name);
-        for(String pho: listPhones)
-            Log.i(TAG, "Phone number" + pho);
 
         sendToServer(2, listPhones, listNames);
-
         cur.close();
         }
 

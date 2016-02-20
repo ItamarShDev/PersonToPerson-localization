@@ -45,21 +45,27 @@ public class GcmIntentService extends IntentService {
                 Log.e("Bundle", "" + extras.keySet());
                 String m = extras.getString("message", "empty");
                 Log.e("Bundle", "Got message");
-                Log.e("Bundle", "Message: "+m);
-                try {
-                    JSONObject js = new JSONObject(m);
-                    String str = js.getString("message");
-                    Log.i("bundle", "str " + str);
-                    if (str.contains(",")) {
-                        Log.i("bundle", "in if");
-                        sendMessage(str);
-                    } else {
-                        Log.i("bundle", "in else");
-                        showNotification(extras.getString("message"));
+                Log.e("Bundle", "Message: " + m);
+                if(m.compareTo("registered") == 0)
+                {
+                   Log.i("mydebug", "Registration to GCM server completed successfully");
+                }
+                else {
+                    try {
+                        JSONObject js = new JSONObject(m);
+                        String str = js.getString("message");
+                        Log.i("bundle", "str " + str);
+                        if (str.contains(",")) {
+                            Log.i("bundle", "in if");
+                            sendMessage(str);
+                        } else {
+                            Log.i("bundle", "in else");
+                            showNotification(extras.getString("message"));
+                        }
+                    } catch (JSONException e) {
+                        Log.i("bundle", "json exception");
+                        e.printStackTrace();
                     }
-                } catch (JSONException e) {
-                    Log.i("bundle","json exception");
-                    e.printStackTrace();
                 }
 
             }
