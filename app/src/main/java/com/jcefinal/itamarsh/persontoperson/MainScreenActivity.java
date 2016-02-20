@@ -10,6 +10,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -71,7 +72,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private TabLayout tab;
     public int[] colorIntArray = {R.color.blue, R.color.dark_pink, R.color.red};
     public int[] colorIntArray2 = {R.color.dark_blue, R.color.dark_pink};
-    public int[] iconIntArray = {R.drawable.ic_add_white_24dp, R.drawable.ic_play_arrow_white_24dp, R.drawable.ic_stop_white_24dp};
+    public int[] iconIntArray = {R.drawable.ic_add_white_24dp, R.drawable.ic_play_arrow_white_24dp, R.drawable.ic_pause_white_24dp};
     private FloatingActionButton fab;
     private Toolbar toolbar;
     private String message = "Add Contact";
@@ -141,9 +142,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             if(action.equals("approve")) { // make sure action is approve
                 m = (TextView) findViewById(R.id.textView);
                 mViewPager.setCurrentItem(1);
-                fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[2]));
-                fab.setImageDrawable(getResources().getDrawable(iconIntArray[2]));
-                play = true;
+                setSearchStatus(true);
                 if(tabToOpen == 1) {
                     String to = memory.getString("to", "");
                     sendMessage(getApplicationContext(), "message", to, Helper.APPROVED);
@@ -151,8 +150,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 gpsLookout();
             }
         }
-
-        //********************* Tab Listener  ******************************
+                //********************* Tab Listener  ******************************
         tab.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -191,6 +189,30 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         if (tabToOpen == -1)
             readContacts();
     }
+    private void setSearchStatus(boolean status){
+    if(status){
+        play = true;
+        setFloatingActionButtonColors(fab,colorIntArray[2],colorIntArray[1], iconIntArray[2]);
+    }
+    }
+    //set colors for FAB
+    private void setFloatingActionButtonColors(FloatingActionButton fab, int primaryColor, int rippleColor, int icon) {
+        int[][] states = {
+                {android.R.attr.state_enabled},
+                {android.R.attr.state_pressed},
+        };
+
+        int[] colors = {
+                primaryColor,
+                rippleColor,
+        };
+
+        ColorStateList colorStateList = new ColorStateList(states, colors);
+        fab.setBackgroundTintList(colorStateList);
+        fab.setImageDrawable(getResources().getDrawable(icon));
+
+    }
+
     //****************************************************************
     //*        Treatment for notification with location
     //****************************************************************
@@ -249,7 +271,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 message = "Add Contact";
                 break;
             case 1:
-                message = "Stop the Search";
+                message = "Long Press to Stop Current Search";
                 break;
         }
     }
@@ -260,6 +282,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
         switch (mViewPager.getCurrentItem()) {
             case 0: //tab 0 selected, add contact
+                setFloatingActionButtonColors(fab, colorIntArray[0], colorIntArray2[1], iconIntArray[0]);
                 AddContactDialogFragment alert = new AddContactDialogFragment();
                 alert.show(getFragmentManager(), null);
 
@@ -288,18 +311,16 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             case 1: // tab 1 selected, stop location transmission
                 m = (TextView) findViewById(R.id.textView);
                 if (play) {
-                    fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[1]));
-                    fab.setImageDrawable(getResources().getDrawable(iconIntArray[1]));
                     try {
+                        setFloatingActionButtonColors(fab, colorIntArray[1], colorIntArray2[0], iconIntArray[1]);
                         locationManager.removeUpdates(locationListener);
-                        m.setText("stopped location");
+                        m.setText("Paused Location");
                     } catch (SecurityException s) {
 
                     }
                     play = false;
                 } else {
-                    fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[2]));
-                    fab.setImageDrawable(getResources().getDrawable(iconIntArray[2]));
+                    setFloatingActionButtonColors(fab, colorIntArray[2], colorIntArray2[1], iconIntArray[2]);
                     m = (TextView) findViewById(R.id.textView);
                     m.setText("looking for location...");
                     gpsLookout();
@@ -452,8 +473,22 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     }
     @Override
     public boolean onLongClick(View v) {
-        Snackbar.make(v, message, Snackbar.LENGTH_SHORT)
-                .setAction("Action", null).show();
+        if(v==fab){
+            m = (TextView) findViewById(R.id.textView);
+            if (play) {
+                try {
+                    setFloatingActionButtonColors(fab, colorIntArray[1], colorIntArray2[0], iconIntArray[1]);
+                    locationManager.removeUpdates(locationListener);
+                    m.setText("Stopped Search");
+                } catch (SecurityException s) {
+
+                }
+                play = false;
+            }
+            else
+            Snackbar.make(v, message, Snackbar.LENGTH_SHORT)
+                    .setAction("Action", null).show();
+        }
         return true;
     }
 
@@ -472,10 +507,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             @Override
             public void onAnimationEnd(Animation animation) {
                 // Change FAB color and icon
-                fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[position]));
+                int p = position==0?0:position-1;
+                setFloatingActionButtonColors(fab, colorIntArray[position],colorIntArray2[p], iconIntArray[position]);
                 toolbar.setBackgroundColor(getResources().getColor(colorIntArray2[position]));
                 tab.setBackgroundColor(getResources().getColor(colorIntArray2[position]));
-                fab.setImageDrawable(getResources().getDrawable(iconIntArray[position]));
 
                 // Scale up animation
                 ScaleAnimation expand = new ScaleAnimation(0.2f, 1f, 0.2f, 1f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);

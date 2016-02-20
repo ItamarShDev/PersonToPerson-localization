@@ -45,7 +45,7 @@ public class GcmIntentService extends IntentService {
                 Log.e("Bundle", "" + extras.keySet());
                 String m = extras.getString("message", "empty");
                 Log.e("Bundle", "Got message");
-                Log.e("Bundle", m);
+                Log.e("Bundle", "Message: "+m);
                 try {
                     JSONObject js = new JSONObject(m);
                     String str = js.getString("message");
@@ -134,6 +134,7 @@ public class GcmIntentService extends IntentService {
                 }
                 else if(m.equals(Helper.APPROVED))
                 {
+                    Log.i("APPROVED","Got Approved from "+from);
                     //set click listener on notification
                     Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
                     approve.putExtra("loc", 2);
