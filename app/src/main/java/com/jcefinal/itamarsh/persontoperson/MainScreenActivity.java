@@ -208,7 +208,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         };
 
         ColorStateList colorStateList = new ColorStateList(states, colors);
-        fab.setBackgroundTintList(colorStateList);
+//        fab.setBackgroundTintList(colorStateList);
         fab.setImageDrawable(getResources().getDrawable(icon));
 
     }
