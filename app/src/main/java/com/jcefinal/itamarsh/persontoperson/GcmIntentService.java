@@ -189,7 +189,7 @@ public class GcmIntentService extends IntentService {
                     //set click listener on notification
                     NotificationCompat.InboxStyle inboxStyle =
                             new NotificationCompat.InboxStyle();
-                    inboxStyle.setBigContentTitle("Search Refused");
+                    inboxStyle.setBigContentTitle("Search Stopped");
                     inboxStyle.addLine("From: " + from);
                     inboxStyle.addLine("The Search Has Been Stopped by the User");
                     builder.setStyle(inboxStyle);

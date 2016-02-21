@@ -110,7 +110,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         service = new Intent(this,LocationService.class);
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
-        play = false;
+        play = memory.getBoolean("PLAY", false);
         mBound = false;
         setSupportActionBar(toolbar);
         dal = new DAL(this);
@@ -163,7 +163,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             if(action.equals("approve")) { // make sure action is approve
                 m = (TextView) findViewById(R.id.textView);
                 mViewPager.setCurrentItem(1);
-                setSearchStatus(true);
+                setSearchStatus(true, 1);
                 setMessage(1);
                 if(tabToOpen == 1) {//when approving request
                     String to = i.getStringExtra("to");
@@ -186,7 +186,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             else if(action.equals("stop_search")){
                 try{
                     stopService(service);
-                    setSearchStatus(false);
+                    setSearchStatus(false, 0);
                     receiving = false;
                     Toast.makeText(this, "Search stopped",Toast.LENGTH_SHORT).show();
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
@@ -239,15 +239,19 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
     };
 
-    private void setSearchStatus(boolean status){
-    if(status){
-        play = true;
-        setFloatingActionButtonColors(fab,colorIntArray[RED],colorIntArray[PINK], iconIntArray[PAUSE]);
-    }
-        else{
-        play = true;
-        setFloatingActionButtonColors(fab,colorIntArray[PINK],colorIntArray[BLUE], iconIntArray[PLAY]);
-    }
+    private void setSearchStatus(boolean status, int tab){
+        play = status;
+        if(tab == 0){
+            setFloatingActionButtonColors(fab,colorIntArray[BLUE],colorIntArray[PINK], iconIntArray[ADD]);
+        }else{
+
+            if(status){
+                setFloatingActionButtonColors(fab,colorIntArray[RED],colorIntArray[PINK], iconIntArray[PAUSE]);
+            }
+            else{
+                setFloatingActionButtonColors(fab,colorIntArray[PINK],colorIntArray[BLUE], iconIntArray[PLAY]);
+            }
+        }
     }
     //set colors for FAB
     private void setFloatingActionButtonColors(FloatingActionButton fab, int primaryColor, int rippleColor, int icon) {
@@ -260,11 +264,18 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 primaryColor,
                 rippleColor,
         };
-        toolbar.setBackgroundColor(getResources().getColor(colorIntArray2[1]));
-        tab.setBackgroundColor(getResources().getColor(colorIntArray2[1]));
+        int color;
+        if(primaryColor==colorIntArray[BLUE])
+            color = BLUE;
+        else
+            color = PINK;
+        toolbar.setBackgroundColor(getResources().getColor(colorIntArray2[color]));
+        tab.setBackgroundColor(getResources().getColor(colorIntArray2[color]));
 
         ColorStateList colorStateList = new ColorStateList(states, colors);
-//        fab.setBackgroundTintList(colorStateList);
+//        if(android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.LOLLIPOP)
+//            fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[primaryColor]));
+            //fab.setBackgroundTintList(colorStateList);
         fab.setImageDrawable(getResources().getDrawable(icon));
 
     }
@@ -323,6 +334,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
         flag = true;
+        SharedPreferences.Editor edit = memory.edit();
+        edit.putBoolean("PLAY", play);
+        edit.apply();
         super.onPause();
     }
 
@@ -420,7 +434,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 }else{
                 if (play) {
                     try {
-                        setSearchStatus(false);
+                        setSearchStatus(false, 1);
                         unbindService(mConnection);
                         stopService(service);
                         m.setText("Paused Location");
@@ -430,7 +444,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     }
                     play = false;
                 } else {
-                    setSearchStatus(true);
+                    setSearchStatus(true, 1);
                     mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
                     m = (TextView) findViewById(R.id.textView);
                     m.setText("looking for location...");
@@ -449,8 +463,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             m = (TextView) findViewById(R.id.textView);
             if (play) {
                 try {
-                    setSearchStatus(false);
+                    setSearchStatus(false, 1);
                     receiving = false;
+                    mBound = false;
+                    play = false;
                     unbindService(mConnection);
                     stopService(service);
                     m.setText("Stopped Search");
@@ -528,8 +544,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             @Override
             public void onAnimationEnd(Animation animation) {
                 // Change FAB color and icon
+                Log.i("PLAY", "play is "+play);
                 int p = position==0?0:position-1;
-                setFloatingActionButtonColors(fab, colorIntArray[position],colorIntArray2[p], iconIntArray[position]);
+                int pos = position;
+                if(mBound&&(position==1))
+                    pos = PAUSE;
+                setFloatingActionButtonColors(fab, colorIntArray[position],colorIntArray2[p], iconIntArray[pos]);
                 toolbar.setBackgroundColor(getResources().getColor(colorIntArray2[position]));
                 tab.setBackgroundColor(getResources().getColor(colorIntArray2[position]));
 
@@ -578,10 +598,14 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     @Override
     public void onStop() {
-        play = false;
-        if(mSensorManager!=null)
-            mSensorManager.unregisterListener(sensorEventListener);
         super.onStop();
+        play = false;
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
+        stopService(service);
+        if(mSensorManager!=null) {
+            mSensorManager.unregisterListener(sensorEventListener);
+        }
 
     }
 
