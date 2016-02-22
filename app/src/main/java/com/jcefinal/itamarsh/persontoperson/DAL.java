@@ -27,7 +27,7 @@ public class DAL {
         return cursor;
 
     }
-
+    //Function to add entry with phone number and name
     public void addEntries(String name,String phone)
     {
         db = cdh.getWritableDatabase();
@@ -40,6 +40,7 @@ public class DAL {
         db.close();
 
     }
+    //Function return name's for person from his phone number
     public String getName(String phone) {
         Cursor cursor = getAllTimeEntriesCursor();
         int position = 0;
@@ -59,6 +60,7 @@ public class DAL {
         int timeIndex = cursor.getColumnIndex(Contacts.ContactsTable.userName);
         return cursor.getString(timeIndex);
     }
+    //Return name from cursor position
     public String getName(int position) {
         Cursor cursor = getAllTimeEntriesCursor();
         cursor.moveToPosition(position);
@@ -66,6 +68,7 @@ public class DAL {
         String name = cursor.getString(timeIndex);
         return name;
     }
+    //Return phone from cursor position
     public String getPhone(int position) {
         Cursor cursor = getAllTimeEntriesCursor();
         cursor.moveToPosition(position);
@@ -73,5 +76,4 @@ public class DAL {
         String phone = cursor.getString(timeIndex);
         return phone;
     }
-   // public Cursor checkPhoneExist
 }

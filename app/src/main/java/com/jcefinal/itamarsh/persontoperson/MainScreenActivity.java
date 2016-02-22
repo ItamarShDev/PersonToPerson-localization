@@ -69,10 +69,10 @@ import java.util.ArrayList;
 
 public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
     /*Define variables */
-    private final static int NETWORK_ON=0, WIFI_ON =1, GPS_ON = 2,BT_ON = 3;
-    private WifiP2pManager mManager;
+    private final static int NETWORK_ON=0, WIFI_ON =1, GPS_ON = 2;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
+    private static final String MODE_APPROVE = "approve", MODE_STOP = "stop_search", MESSAGE_RECEIVER = "my-event", SHOW_DIALOG ="show-dialog";
     private static final int RED = 2, BLUE = 0, PINK = 1, PLAY = 1,ADD= 0, PAUSE = 2;
     public int[] colorIntArray = {R.color.blue, R.color.dark_pink, R.color.red};
     public int[] colorIntArray2 = {R.color.dark_blue, R.color.dark_pink};
@@ -138,12 +138,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
                 @Override
                 public void onDismiss(DialogInterface dialog) {
+                    //register with number and name that user gave
                     Helper.sendMessage(getBaseContext(), "register", null, null);
                 }
             });
         }
         else {
-            Helper.sendMessage(getBaseContext(), "register", null, null);
+            Helper.sendMessage(getBaseContext(), "register", null, null); //register with number and name that saved in SP
         }
 
         /***************************************************
@@ -157,7 +158,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         if (tabToOpen!=-1) { //If was opened from Notification, extra will be given
             NotificationManager nm = (NotificationManager)getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
             nm.cancel(0); //Cancel all notifications
-            if(action.equals("approve")) { // make sure action is approve
+            if(action.equals(MODE_APPROVE)) { // make sure action is approve
                 m = (TextView) findViewById(R.id.textView);
                 mViewPager.setCurrentItem(1);
                 setSearchStatus(true, 1);
@@ -172,15 +173,16 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 }
                 else if(tabToOpen == 2){
                     receiving = true;
-                    LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
-                            new IntentFilter("my-event"));
+                    //Register broadcast receiver
+                            LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
+                            new IntentFilter(MESSAGE_RECEIVER));
                 }
                 startService(service);
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
                 LocalBroadcastManager.getInstance(this).registerReceiver(mDialogShow,
-                        new IntentFilter("show-dialog"));
+                        new IntentFilter(SHOW_DIALOG));
             }
-            else if(action.equals("stop_search")){
+            else if(action.equals(MODE_STOP)){
                 try{
                     stopService(service);
                     setSearchStatus(false, 0);
@@ -235,7 +237,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             mBound = false;
         }
     };
-
+    //        Set colors and the icon of fab depends on search status
     private void setSearchStatus(boolean status, int tab){
         if(tab == 0){
             setFloatingActionButtonColors(fab,colorIntArray[BLUE],colorIntArray[PINK], iconIntArray[ADD]);
@@ -292,7 +294,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 String message = intent.getStringExtra("message");
                 Log.d("receiver", "Got message: " + message);
                 float d = 0;
-                if(locationService.getLastLocation() != null){
+                if(locationService.getLastLocation() != null){// If current location set
                     String location[] = message.split(",");
                     String loc = "\nYour Location: \n" + String.format("%.2f",currentLocation.getLongitude()) + ","
                             + String.format("%.2f", currentLocation.getLatitude());
@@ -302,7 +304,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     float l2 = Float.valueOf(location[1]);
                     d = currentLocation.distanceTo(target);
                     Log.i("DISTANCE", "" + d);
-                    String dtLoc = "Friend Location: "+ String.format("%.2f", l1) +',' + String.format("%.2f",l2) +"\nDistance: "+
+                 //Update friend's location
+                            String dtLoc = "Friend Location: "+ String.format("%.2f", l1) +',' + String.format("%.2f",l2) +"\nDistance: "+
                             String.format("%.2f",d);
                     TextView locationText = (TextView)findViewById(R.id.distanceText);
                     locationText.setText(dtLoc);
@@ -315,10 +318,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     @Override
     public void onResume(){
         super.onResume();
-        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
-                new IntentFilter("my-event"));
+        // Need to register again all broadcast receivers
+                LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
+                new IntentFilter(MESSAGE_RECEIVER));
         LocalBroadcastManager.getInstance(this).registerReceiver(mDialogShow,
-                new IntentFilter("show-dialog"));
+                new IntentFilter(SHOW_DIALOG));
         if(mSensorManager!=null)
            mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
     }
@@ -340,6 +344,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             buildAlertMessageNoGps(type);
         }
     };
+// Alert message asking for user to enable GPS
     public void buildAlertMessageNoGps(final int type) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
         String posType = (type==GPS_ON||type==NETWORK_ON)?"GPS":"WiFi";
@@ -432,7 +437,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                         if(mSensorManager!=null)
                         mSensorManager.unregisterListener(sensorEventListener);
                     } catch (SecurityException s) {
-
+                        Log.i(TAG, "Security exception");
                     }
                 } else {
                     startService(service);
@@ -469,7 +474,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     if(mSensorManager!=null)
                         mSensorManager.unregisterListener(sensorEventListener);
                 } catch (SecurityException s) {
-
+                    Log.i(TAG, "Security exception");
                 }
             }
             else{
@@ -479,7 +484,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
         return true;
     }
-
+    //Function to calculate angle of the phone relative to friend's location using sensors
     private void getDirection()
     {
         compassView = (CompassView)findViewById(R.id.myView);
@@ -498,10 +503,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             compassView.invalidate();
         }
     }
-
+    //Sensor listener
     public void onSensorChanged(SensorEvent event) {
         azimuth = event.values[0];
-//        Log.i("mydebug", "azimuth " + azimuth);
         getDirection();
     }
 
@@ -509,7 +513,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
-
+    //Function to calculate angle from (x,y) of 2 points
     private static double calculateAngle(double x1, double y1, double x2,
                                         double y2) {
         double dx = x2 - x1;
@@ -518,7 +522,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         return (Math.atan2(dx, dy) * 180) / Math.PI;
     }
 
-
+    //Function responsible for floating button animation
     protected void animateFab(final int position) {
         fab.clearAnimation();
         // Scale down animation
@@ -589,6 +593,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     @Override
     public void onStop() {
         super.onStop();
+        //Unregister sensor listener
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
         stopService(service);
@@ -597,8 +602,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
 
     }
-
-
+    // This function sending to GCM server list of contacts from phonebook and getting all registered friends,
+    // adding them to list of contacts
     public void sendToServer(final int src, final ArrayList<String> phoneList, final ArrayList<String> names){
         String serverAddr = Helper.SERVER_ADDR+"/contacts";
         context = this;
@@ -612,7 +617,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         JSONArray arr = new JSONArray(list);
         Log.i(TAG, "json array" + arr);
         JSONObject jsonBody = new JSONObject();
-        try {
+        try { //Got the list of friends, need to add them to contacts list
             jsonBody.put("contacts", arr);
         }
         catch (JSONException e)
@@ -648,6 +653,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                     }
                                 }
                             }
+                            //If user asked to add specific user, and he is not registered, ask if he want to invite him
                            if(result.length()== 0 && src == 1)
                             {
                                 inviteFriend();
@@ -675,6 +681,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 }
 
         );
+        //Sometimes timeout acquired, increase timeout and resend
         request.setRetryPolicy(new DefaultRetryPolicy(
                 Helper.MY_SOCKET_TIMEOUT_MS,
                 DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
@@ -682,7 +689,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         request.setTag("REQUEST");
         queue.add(request);
     }
-
+    //Function to invite friend to APP by SMS
     public void inviteFriend()
     {
         Toast.makeText(context, "contact won't be added", Toast.LENGTH_LONG).show();
@@ -712,7 +719,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 .show();
     }
 
-
+    // Function to read contacts from phone book and it to list
     public void readContacts() {
         ContentResolver cr = getContentResolver();
         Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
@@ -853,7 +860,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         public void onResume() {
             super.onResume();
         }
-
+        //Function to update contacts list after adding to DB in fragment class
         private void updateList() {
             cursorListView = (ListView) rootView.findViewById(R.id.cursorListView);
             dal = new DAL(this.getContext());
@@ -878,7 +885,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             return false;
         }
     }
-
+    //Initialize views
     private void initViews() {
         mViewPager = (ViewPager) findViewById(R.id.container);
         toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -888,7 +895,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         compassView = (CompassView)findViewById(R.id.myView);
 
     }
-
+    //Function to update contacts list after adding to DB.
     private void getContacts() {
         cursorListView = (ListView) findViewById(R.id.cursorListView);
         Cursor cursor = dal.getAllTimeEntriesCursor();

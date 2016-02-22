@@ -14,12 +14,14 @@ import android.os.IBinder;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-
+/*
+ * This class responsible for running location listener, getting updates, in background
+ */
 public class LocationService extends Service implements LocationListener {
     private static final String TAG = "LocationService";
-    private Location currentLocation, location;
+    private Location currentLocation;
     private boolean gpsOn, networkOn;
-    private final static int NETWORK_ON = 0, WIFI_ON = 1, GPS_ON = 2, BT_ON = 3;
+    private final static int NETWORK_ON = 0, GPS_ON = 2;
     private SharedPreferences memory;
     private LocationListener locListener;
     private final IBinder mBinder = new LocalBinder();
@@ -59,15 +61,17 @@ public class LocationService extends Service implements LocationListener {
         final String locationProvider = locationManager.getBestProvider(c, true);
         try {
             currentLocation = locationManager.getLastKnownLocation(locationProvider);
-//            locationManager.requestLocationUpdates(locationProvider, 0, 0, locListener);
           locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locListener);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locListener);
 
         } catch (SecurityException s) {
+            Log.i(TAG, "Security Exception");
+
         }
 
         return super.onStartCommand(intent, flags, startId);
     }
+    //This function will call function from main activity - to show dialog
     private void showDialog(int type) {
         Intent intent = new Intent("show-dialog");
         intent.putExtra("type", type);

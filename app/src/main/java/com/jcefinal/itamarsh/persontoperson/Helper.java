@@ -16,8 +16,6 @@ public class Helper {
     public static final String REQUEST = "I Want to Search For You";
     public static final String REFUSE = "Sorry friend. I'm hiding from you ;)";
     public static final String APPROVED = "Approved the search ";
-    public static final String EXIST = "contact exist";
-    public static final String NOT_EXIST = "contact not exist";
     public static final String STOP_SEARCH = "Search Stopped";
     public static final int MY_SOCKET_TIMEOUT_MS = 10000;
     private static final String TAG = "myDebug";
@@ -38,7 +36,7 @@ public class Helper {
         {}
         return hashString;
     }
-
+    //This function call to send message intent service with arguments that was sent to function
     public static void sendMessage(Context context, String op, String to, String content)
     {
         Intent msgIntent = new Intent(context, SendMessageIntentService.class);

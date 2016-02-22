@@ -37,7 +37,9 @@ public class GcmIntentService extends IntentService {
     public GcmIntentService() {
         super("GcmIntentService");
     }
-
+    //***************************************************************************
+    //                  Intent Service getting GCM message                      *
+    // **************************************************************************
     @Override
     protected void onHandleIntent(Intent intent) {
         Bundle extras = intent.getExtras();
@@ -61,10 +63,8 @@ public class GcmIntentService extends IntentService {
                         String str = js.getString("message");
                         Log.i("bundle", "str " + str);
                         if (str.contains(",")) {
-                            Log.i("bundle", "in if");
                             sendMessage(str);
                         } else {
-                            Log.i("bundle", "in else");
                             showNotification(extras.getString("message"));
                         }
                     } catch (JSONException e) {
@@ -77,12 +77,13 @@ public class GcmIntentService extends IntentService {
         }
         GcmBroadcastReceiver.completeWakefulIntent(intent);
     }
-
+    //Function send broadcast to main activity, to treat location message
     private void sendMessage(String data) {
         Intent intent = new Intent("my-event");
         intent.putExtra("message", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
+    //Function show's notification and act depending on it's kind
     protected void showNotification(final String message) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
@@ -106,7 +107,9 @@ public class GcmIntentService extends IntentService {
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
-                NotificationCompat.Builder builder = new NotificationCompat.Builder(c);
+                //Prepare notification builder
+
+                        NotificationCompat.Builder builder = new NotificationCompat.Builder(c);
                 builder.setDefaults(Notification.DEFAULT_ALL);
                 if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP){
                     Bitmap bm = BitmapFactory.decodeResource(getResources(), R.drawable.icon);

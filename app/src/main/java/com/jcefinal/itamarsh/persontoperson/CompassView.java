@@ -17,7 +17,6 @@ public class CompassView extends View {
     private Paint paint;
     private Path path;
     private int height, width, left, top;
-    private static final int SIZE = 100;
     public float angle;
 
     public CompassView(Context context) {
@@ -44,7 +43,6 @@ public class CompassView extends View {
         paint.setStyle(Paint.Style.FILL);
         path = new Path();
         angle = 0;
-        //degrees = 0;
 
     }
 
