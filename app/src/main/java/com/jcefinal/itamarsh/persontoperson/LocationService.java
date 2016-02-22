@@ -54,13 +54,15 @@ public class LocationService extends Service implements LocationListener {
             showDialog(NETWORK_ON);
         }
         Criteria c = new Criteria();
-        c.setAccuracy(Criteria.ACCURACY_FINE);
+        c.setAccuracy(Criteria.ACCURACY_COARSE);
         c.setPowerRequirement(Criteria.POWER_HIGH);
         final String locationProvider = locationManager.getBestProvider(c, true);
         try {
             currentLocation = locationManager.getLastKnownLocation(locationProvider);
-//                        locationManager.requestLocationUpdates(locationProvider, 0, 0, locationListener);
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locListener);
+//            locationManager.requestLocationUpdates(locationProvider, 0, 0, locListener);
+          locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locListener);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locListener);
+
         } catch (SecurityException s) {
         }
 

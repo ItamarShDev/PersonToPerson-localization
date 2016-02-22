@@ -107,7 +107,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         setContentView(R.layout.activity_main_screen);
         initViews();
         service = new Intent(this,LocationService.class);
-        mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
         mBound = false;
         setSupportActionBar(toolbar);
@@ -177,7 +176,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                             new IntentFilter("my-event"));
                 }
                 startService(service);
-                bindService(service, mConnection, Context.BIND_ABOVE_CLIENT);
+                bindService(service, mConnection, Context.BIND_AUTO_CREATE);
                 LocalBroadcastManager.getInstance(this).registerReceiver(mDialogShow,
                         new IntentFilter("show-dialog"));
             }
@@ -437,13 +436,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     }
                 } else {
                     startService(service);
-                    bindService(service, mConnection, Context.BIND_ABOVE_CLIENT);
+                    bindService(service, mConnection, Context.BIND_AUTO_CREATE);
                     setSearchStatus(true, 1);
                     if(mSensorManager!=null)
                         mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
                     m = (TextView) findViewById(R.id.textView);
                     m.setText("looking for location...");
-
                     mBound = true;
 
                 }
@@ -460,8 +458,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 try {
                     setSearchStatus(false, 1);
                     receiving = false;
-                    mBound = false;
                     stopService(service);
+                    mBound = false;
                     m.setText("Stopped Search");
                     TextView locationText = (TextView)findViewById(R.id.distanceText);
                     locationText.setText("");
