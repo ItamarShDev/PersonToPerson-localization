@@ -89,7 +89,6 @@ public class LocationService extends Service implements LocationListener {
             return;
         }
         locationManager.removeUpdates(this);
-
         super.onDestroy();
     }
 

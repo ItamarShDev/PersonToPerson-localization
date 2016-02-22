@@ -80,7 +80,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private FloatingActionButton fab;
     private Toolbar toolbar;
     private String message = "Add Contact";
-    boolean play;
     private TextView m;
     private DAL dal;
     private ListView cursorListView;
@@ -110,7 +109,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         service = new Intent(this,LocationService.class);
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
-        play = memory.getBoolean("PLAY", false);
         mBound = false;
         setSupportActionBar(toolbar);
         dal = new DAL(this);
@@ -178,8 +176,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                             new IntentFilter("my-event"));
                 }
-                bindService(service, mConnection, Context.BIND_AUTO_CREATE);
                 startService(service);
+                bindService(service, mConnection, Context.BIND_ABOVE_CLIENT);
                 LocalBroadcastManager.getInstance(this).registerReceiver(mDialogShow,
                         new IntentFilter("show-dialog"));
             }
@@ -240,7 +238,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     };
 
     private void setSearchStatus(boolean status, int tab){
-        play = status;
         if(tab == 0){
             setFloatingActionButtonColors(fab,colorIntArray[BLUE],colorIntArray[PINK], iconIntArray[ADD]);
         }else{
@@ -273,9 +270,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         tab.setBackgroundColor(getResources().getColor(colorIntArray2[color]));
 
         ColorStateList colorStateList = new ColorStateList(states, colors);
-//        if(android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.LOLLIPOP)
-//            fab.setBackgroundTintList(getResources().getColorStateList(colorIntArray[primaryColor]));
-            //fab.setBackgroundTintList(colorStateList);
         fab.setImageDrawable(getResources().getDrawable(icon));
 
     }
@@ -326,17 +320,15 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 new IntentFilter("my-event"));
         LocalBroadcastManager.getInstance(this).registerReceiver(mDialogShow,
                 new IntentFilter("show-dialog"));
-      //  mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
+        if(mSensorManager!=null)
+           mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
     }
     @Override
     protected void onPause() {
-        // Unregister since the activity is not visible
+//         Unregister since the activity is not visible
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
         flag = true;
-        SharedPreferences.Editor edit = memory.edit();
-        edit.putBoolean("PLAY", play);
-        edit.apply();
         super.onPause();
     }
 
@@ -392,7 +384,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 message = "Add Contact";
                 break;
             case 1:
-                if(play)
+                if( mBound)
                     message = "Stopped Current Search";
                 else
                     message = "Long Press to Stop Current Search";
@@ -409,7 +401,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 setFloatingActionButtonColors(fab, colorIntArray[BLUE], colorIntArray[PINK], iconIntArray[ADD]);
                 AddContactDialogFragment alert = new AddContactDialogFragment();
                 alert.show(getFragmentManager(), null);
-
                 alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
@@ -428,29 +419,33 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 Log.e("myDebug", "action button was pressed, and first tab selected");
                 break;
             case 1: // tab 1 selected, stop location transmission
+                Log.i("BOUND", "mBound is "+mBound);
                 m = (TextView) findViewById(R.id.textView);
                 if(!mBound&&!receiving){
                     Snackbar.make(view,"Please Select a Contact",Snackbar.LENGTH_LONG) .setAction("Action", null).show();
                 }else{
-                if (play) {
+                if (mBound) {
                     try {
                         setSearchStatus(false, 1);
-                        unbindService(mConnection);
                         stopService(service);
+                        mBound = false;
                         m.setText("Paused Location");
+                        if(mSensorManager!=null)
                         mSensorManager.unregisterListener(sensorEventListener);
                     } catch (SecurityException s) {
 
                     }
-                    play = false;
                 } else {
+                    startService(service);
+                    bindService(service, mConnection, Context.BIND_ABOVE_CLIENT);
                     setSearchStatus(true, 1);
-                    mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
+                    if(mSensorManager!=null)
+                        mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
                     m = (TextView) findViewById(R.id.textView);
                     m.setText("looking for location...");
-                    bindService(service, mConnection, Context.BIND_AUTO_CREATE);
-                    startService(service);
-                    play = true;
+
+                    mBound = true;
+
                 }
                 break;
             }
@@ -461,13 +456,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     public boolean onLongClick(View v) {
         if(v==fab){
             m = (TextView) findViewById(R.id.textView);
-            if (play) {
+            if (mBound) {
                 try {
                     setSearchStatus(false, 1);
                     receiving = false;
                     mBound = false;
-                    play = false;
-                    unbindService(mConnection);
                     stopService(service);
                     m.setText("Stopped Search");
                     TextView locationText = (TextView)findViewById(R.id.distanceText);
@@ -480,7 +473,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 } catch (SecurityException s) {
 
                 }
-                play = false;
             }
             else{
                 Snackbar.make(v, message, Snackbar.LENGTH_SHORT)
@@ -544,7 +536,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             @Override
             public void onAnimationEnd(Animation animation) {
                 // Change FAB color and icon
-                Log.i("PLAY", "play is "+play);
+                Log.i("PLAY", "play is "+mBound);
                 int p = position==0?0:position-1;
                 int pos = position;
                 if(mBound&&(position==1))
@@ -599,7 +591,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     @Override
     public void onStop() {
         super.onStop();
-        play = false;
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
         stopService(service);

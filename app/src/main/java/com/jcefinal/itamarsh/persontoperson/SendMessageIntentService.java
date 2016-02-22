@@ -9,6 +9,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -58,7 +59,7 @@ public class SendMessageIntentService extends IntentService {
         Log.i(TAG,"to: " + to);
         Log.i(TAG, "op " + op);
         Log.i(TAG, "content" + content);
-        context = getBaseContext();
+        context = getApplicationContext();
         Log.d(TAG, "Running  sendmessage");
         String authorizedEntity = SENDER_ID; // Project id from Google Developer Console
         token = "";
