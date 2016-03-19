@@ -87,8 +87,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     public int[] iconIntArray = {R.drawable.ic_add_white_24dp, R.drawable.ic_play_arrow_white_24dp, R.drawable.ic_pause_white_24dp};
     boolean play;
     boolean gpsOn, networkOn;
-    ArrayList<String> mArrayAdapter;
-    // Create a BroadcastReceiver for ACTION_FOUND
+    private ArrayList<String> mArrayAdapter;
+    /**************************************************************************************************/
+
     private final BroadcastReceiver mBTReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
@@ -134,6 +135,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
+
+    /**************************************************************************************************/
+/*                                 BROADCAST RECEIVERS                                            */
     private boolean receiving = false;
     /**
      * Defines callbacks for service binding, passed to bindService()
