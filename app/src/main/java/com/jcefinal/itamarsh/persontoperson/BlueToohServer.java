@@ -38,7 +38,7 @@ public class BlueToohServer extends Thread {
             }
             // If a connection was accepted
             if (socket != null) {
-                // Do work to manage the connection (in a separate thread)
+                //TODO Do work to manage the connection (in a separate thread)
 //                    manageConnectedSocket(socket);
                 try {
                     mmServerSocket.close();

@@ -47,7 +47,7 @@ public class ConnectThread extends Thread {
             return;
         }
 
-        // Do work to manage the connection (in a separate thread)
+        //TODO  Do work to manage the connection (in a separate thread)
 //        manageConnectedSocket(mmSocket);
     }
 
