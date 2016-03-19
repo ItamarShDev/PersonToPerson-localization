@@ -1,11 +1,9 @@
 package com.jcefinal.itamarsh.persontoperson;
 
 import android.app.AlertDialog;
-import android.bluetooth.BluetoothAdapter;
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.app.NotificationManager;
 import android.app.ProgressDialog;
+import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -13,7 +11,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
@@ -22,7 +19,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -31,23 +27,14 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
-import android.os.ParcelUuid;
-import android.net.wifi.p2p.WifiP2pManager;
-import android.os.Bundle;
 import android.os.IBinder;
+import android.os.ParcelUuid;
 import android.provider.ContactsContract;
 import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.app.FragmentStatePagerAdapter;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.view.PagerAdapter;
-import android.support.v4.view.ViewPager;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
@@ -69,9 +56,6 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -84,33 +68,33 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
     /*Define variables */
-    private WifiManager wifi;
-        private WifiInfo info;
-        private IntentFilter mIntentFilter;
-        private WifiP2pManager mManager;
-        private WifiP2pManager.Channel mChannel;
-        private BroadcastReceiver mReceiver;
-    private SectionsPagerAdapter mSectionsPagerAdapter;
-    private TabLayout tab;
+
     private static final String MODE_APPROVE = "approve", MODE_STOP = "stop_search", MESSAGE_RECEIVER = "my-event", SHOW_DIALOG ="show-dialog";
     private static final int RED = 2, BLUE = 0, PINK = 1, PLAY = 1,ADD= 0, PAUSE = 2;
+    private final static int WIFI_ON = 1, GPS_ON = 2, BT_ON = 3;
+    private static final String TAG = "myDebug";
+    private final int MIN_GPS_RADIUS = 30, BT_ON_RADIUS = 15;
+    private final IntentFilter intentFilter = new IntentFilter();
     public int[] colorIntArray = {R.color.blue, R.color.dark_pink, R.color.red};
     public int[] colorIntArray2 = {R.color.dark_blue, R.color.dark_pink};
     public int[] iconIntArray = {R.drawable.ic_add_white_24dp, R.drawable.ic_play_arrow_white_24dp, R.drawable.ic_pause_white_24dp};
+    boolean play;
+    boolean gpsOn, networkOn;
+    private BroadcastReceiver mReceiver;
+    private SectionsPagerAdapter mSectionsPagerAdapter;
+    private TabLayout tab;
     private FloatingActionButton fab;
     private Toolbar toolbar;
-    boolean play;
     private LocationManager locationManager;
     private LocationListener locationListener;
-
     private Location l, correntLocation;
-    private final int MIN_GPS_RADIUS = 30,BT_ON_RADIUS = 20;
-    boolean gpsOn, networkOn;
-    private final static int NETWORK_ON=0, WIFI_ON =1, GPS_ON = 2,BT_ON = 3;
+    private boolean GPS = false, BT = false, WIFI = false;
     private String message = "Add Contact";
     private TextView m;
     private DAL dal;
@@ -119,7 +103,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private SensorManager mSensorManager;
     private Sensor mOrientation;
     private float azimuth = 0; // degree
-    private static final String TAG = "myDebug";
     private SharedPreferences memory;
     private Location currentLocation, target;
     private Context context;
@@ -131,9 +114,93 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private ViewPager mViewPager; //The {@link ViewPager} that will host the section contents.
     private boolean mBound;
     private LocationService locationService;
+    private WifiManager wifi;
+    private WifiInfo info;
+    private IntentFilter mIntentFilter;
+    private WifiP2pManager mManager;
+    private WifiP2pManager.Channel mChannel;
+
 
 
     private boolean receiving = false;
+    /**
+     * Defines callbacks for service binding, passed to bindService()
+     */
+    private ServiceConnection mConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            LocationService.LocalBinder binder = (LocationService.LocalBinder) service;
+            locationService = binder.getService();
+            mBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mBound = false;
+        }
+    };
+    //****************************************************************
+    //*        Treatment for notification with location
+    //****************************************************************
+    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!mBound)
+                return;
+            currentLocation = locationService.getLastLocation();
+            if (flag) {
+                mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+                mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+                mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
+                flag = false;
+            }
+            // Extract data included in the Intent
+            String message = intent.getStringExtra("message");
+            Log.d("receiver", "Got message: " + message);
+            float d = 0;
+            if (locationService.getLastLocation() != null) {// If current location set
+                String location[] = message.split(",");
+                String loc = "\nYour Location: \n" + String.format("%.2f", currentLocation.getLongitude()) + ","
+                        + String.format("%.2f", currentLocation.getLatitude());
+                target.setLongitude(Float.valueOf(location[0]));
+                target.setLatitude(Float.valueOf(location[1]));
+                float l1 = Float.valueOf(location[0]);
+                float l2 = Float.valueOf(location[1]);
+                d = currentLocation.distanceTo(target);
+                Log.i("DISTANCE", "" + d);
+                distanceAlgo(d);
+                //Update friend's location
+                String dtLoc = "Friend Location: " + String.format("%.2f", l1) + ',' + String.format("%.2f", l2) + "\nDistance: " +
+                        String.format("%.2f", d);
+                TextView locationText = (TextView) findViewById(R.id.distanceText);
+                locationText.setText(dtLoc);
+                TextView m = (TextView) findViewById(R.id.textView);
+                m.setText(loc);
+            }
+        }
+    };
+    //BR for DIALOGS
+    private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int type = intent.getIntExtra("type", -1);
+            if (type > -1)
+                buildAlertMessageNoGps(type);
+        }
+    };
+
+    //Function to calculate angle from (x,y) of 2 points
+    private static double calculateAngle(double x1, double y1, double x2,
+                                         double y2) {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+
+        return (Math.atan2(dx, dy) * 180) / Math.PI;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -207,22 +274,18 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 else if(tabToOpen == 2){
                     receiving = true;
                     //Register broadcast receiver
-                    LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
-                            new IntentFilter(MESSAGE_RECEIVER));
                 }
                 startService(service);
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
-                LocalBroadcastManager.getInstance(this).registerReceiver(mDialogShow,
-                        new IntentFilter(SHOW_DIALOG));
             }
             else if(action.equals(MODE_STOP)){
                 try{
                     stopService(service);
-                    setSearchStatus(false, 0);
-                    receiving = false;
-                    Toast.makeText(this, "Search stopped",Toast.LENGTH_SHORT).show();
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
+                    setSearchStatus(false, 0);
+                    receiving = false;
+                    Toast.makeText(this, "Search stopped", Toast.LENGTH_SHORT).show();
                 }catch (SecurityException e){
                     Log.e("LOCATION",e.toString());
                 }
@@ -253,23 +316,26 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     }
 
-    /** Defines callbacks for service binding, passed to bindService() */
-    private ServiceConnection mConnection = new ServiceConnection() {
-
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            // We've bound to LocalService, cast the IBinder and get LocalService instance
-            LocationService.LocalBinder binder = (LocationService.LocalBinder) service;
-            locationService = binder.getService();
-            mBound = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
+    private void stopSearch() {
+        try {
+            setSearchStatus(false, 1);
+            receiving = false;
+            stopService(service);
             mBound = false;
+            m = (TextView) findViewById(R.id.textView);
+            m.setText("Stopped Search");
+            TextView locationText = (TextView) findViewById(R.id.distanceText);
+            locationText.setText("");
+            Helper.sendMessage(this, "message", memory.getString("to", ""), Helper.STOP_SEARCH);
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
+            if (mSensorManager != null)
+                mSensorManager.unregisterListener(sensorEventListener);
+        } catch (SecurityException s) {
+            Log.i(TAG, "Security exception");
         }
-    };
+    }
+
     //        Set colors and the icon of fab depends on search status
     private void setSearchStatus(boolean status, int tab){
         if(tab == 0){
@@ -284,6 +350,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         }
     }
+
     //set colors for FAB
     private void setFloatingActionButtonColors(FloatingActionButton fab, int primaryColor, int rippleColor, int icon) {
         int[][] states = {
@@ -308,55 +375,34 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     }
 
-    //****************************************************************
-    //*        Treatment for notification with location
-    //****************************************************************
-    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if(!mBound)
-                return;
-            currentLocation = locationService.getLastLocation();
-            if(flag) {
-                mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-                mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
-                mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
-                flag = false;
-            }
-            // Extract data included in the Intent
-            String message = intent.getStringExtra("message");
-            Log.d("receiver", "Got message: " + message);
-            float d = 0;
-            if(locationService.getLastLocation() != null){// If current location set
-                String location[] = message.split(",");
-                String loc = "\nYour Location: \n" + String.format("%.2f",currentLocation.getLongitude()) + ","
-                        + String.format("%.2f", currentLocation.getLatitude());
-                target.setLongitude(Float.valueOf(location[0]));
-                target.setLatitude(Float.valueOf(location[1]));
-                float l1 = Float.valueOf(location[0]);
-                float l2 = Float.valueOf(location[1]);
-                d = currentLocation.distanceTo(target);
-                Log.i("DISTANCE", "" + d);
-                //Update friend's location
-                String dtLoc = "Friend Location: "+ String.format("%.2f", l1) +',' + String.format("%.2f",l2) +"\nDistance: "+
-                        String.format("%.2f",d);
-                TextView locationText = (TextView)findViewById(R.id.distanceText);
-                locationText.setText(dtLoc);
-                TextView m = (TextView) findViewById(R.id.textView);
-                m.setText(loc);
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == GPS_ON) {
+            locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
+                GPS = true;
+            else {
+                stopSearch();
             }
         }
-    };
+        if (requestCode == WIFI_ON) {
+            if (resultCode == RESULT_OK)
+                WIFI = true;
+        }
+        if (requestCode == BT_ON) {
+            if (resultCode == RESULT_OK)
+                BT = true;
+        }
 
+    }
 
-    private void locationAlgorithm(float d) {
-        Log.i("ALGO","distance is "+Math.round(d));
-        if (Math.round(d)<=BT_ON_RADIUS){
+    private void distanceAlgo(float distance) {
+        if (distance < 15){
             blueTooth();
-        }
-        if (Math.round(d)<=MIN_GPS_RADIUS) {
+        } else if (distance < 30){
             wifi();
         }
+
     }
 
     private void wifi() {
@@ -365,8 +411,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         info = wifi.getConnectionInfo();
         String address = info.getMacAddress();
         Log.i("WiFi Addredd", address);
-        if (!wifi.isWifiEnabled()){
-            buildAlertMessageNoGps(WIFI_ON);
+        if (!wifi.isWifiEnabled()) {
+            Log.i("ALGO", "WiFi Off");
         }else{
             Log.i("ALGO", "WiFi On");
 
@@ -433,10 +479,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
             else{
                 Log.i("BlueTooth", "disabled");
-                buildAlertMessageNoGps(BT_ON);
+                mBluetoothAdapter.enable();
             }
         }
     }
+
     @Override
     public void onResume(){
         super.onResume();
@@ -448,6 +495,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         if(mSensorManager!=null)
             mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
     }
+
     @Override
     protected void onPause() {
 //         Unregister since the activity is not visible
@@ -457,19 +505,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         super.onPause();
     }
 
-    //BR for DIALOGS
-    private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            int type = intent.getIntExtra("type", -1);
-            if(type>-1)
-                buildAlertMessageNoGps(type);
-        }
-    };
     // Alert message asking for user to enable GPS
     public void buildAlertMessageNoGps(final int type) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        String posType = (type==GPS_ON||type==NETWORK_ON)?"GPS":"WiFi";
+        String posType = type == GPS_ON ? "GPS":"WiFi";
         final String cancel = type==GPS_ON?"Cancel Search":"No Thanks";
         builder.setMessage("Your "+posType+" seems to be disabled, do you want to enable it?")
                 .setCancelable(false)
@@ -477,13 +516,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
                         switch (type){
                             case GPS_ON:
-                                startActivityForResult(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS), GPS_ON);
-                                break;
-                            case NETWORK_ON:
-                                startActivityForResult(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS), GPS_ON);
+                                if (!GPS)
+                                    startActivityForResult(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS), GPS_ON);
                                 break;
                             case WIFI_ON:
-                                startActivityForResult(new Intent(Settings.ACTION_WIFI_SETTINGS), WIFI_ON);
+                                if (!WIFI)
+                                    startActivityForResult(new Intent(Settings.ACTION_WIFI_SETTINGS), WIFI_ON);
                                 break;
                         }
                     }
@@ -492,6 +530,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
                         if (type == GPS_ON) {
                             Toast.makeText(getApplicationContext(), "Search Disabled", Toast.LENGTH_LONG).show();
+                            stopSearch();
                         } else {
                             Toast.makeText(getApplicationContext(), "WiFi Disabled", Toast.LENGTH_LONG).show();
                         }
@@ -577,27 +616,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
 
     }
+
     @Override
     public boolean onLongClick(View v) {
         if(v==fab){
-            m = (TextView) findViewById(R.id.textView);
             if (mBound) {
-                try {
-                    setSearchStatus(false, 1);
-                    receiving = false;
-                    stopService(service);
-                    mBound = false;
-                    m.setText("Stopped Search");
-                    TextView locationText = (TextView)findViewById(R.id.distanceText);
-                    locationText.setText("");
-                    Helper.sendMessage(this, "message", memory.getString("to", ""), Helper.STOP_SEARCH);
-                    LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
-                    LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
-                    if(mSensorManager!=null)
-                        mSensorManager.unregisterListener(sensorEventListener);
-                } catch (SecurityException s) {
-                    Log.i(TAG, "Security exception");
-                }
+                stopSearch();
             }
             else{
                 Snackbar.make(v, message, Snackbar.LENGTH_SHORT)
@@ -606,6 +630,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
         return true;
     }
+
     //Function to calculate angle of the phone relative to friend's location using sensors
     private void getDirection()
     {
@@ -625,6 +650,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             compassView.invalidate();
         }
     }
+
     //Sensor listener
     public void onSensorChanged(SensorEvent event) {
         azimuth = event.values[0];
@@ -634,14 +660,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
-    }
-    //Function to calculate angle from (x,y) of 2 points
-    private static double calculateAngle(double x1, double y1, double x2,
-                                         double y2) {
-        double dx = x2 - x1;
-        double dy = y2 - y1;
-
-        return (Math.atan2(dx, dy) * 180) / Math.PI;
     }
 
     //Function responsible for floating button animation
@@ -876,11 +894,34 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         cur.close();
     }
 
+    //Initialize views
+    private void initViews() {
+        mViewPager = (ViewPager) findViewById(R.id.container);
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        fab = (FloatingActionButton) findViewById(R.id.fab);
+        tab = (TabLayout) findViewById(R.id.tabs);
+        cursorListView = (ListView) findViewById(R.id.cursorListView);
+        compassView = (CompassView) findViewById(R.id.myView);
+
+    }
+
+    //Function to update contacts list after adding to DB.
+    private void getContacts() {
+        cursorListView = (ListView) findViewById(R.id.cursorListView);
+        Cursor cursor = dal.getAllTimeEntriesCursor();
+        String[] entries = new String[]{Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum, Contacts.ContactsTable.userID};
+        int[] viewsID = new int[]{R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
+        SimpleCursorAdapter cursorAdapter = new SimpleCursorAdapter(getApplicationContext(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
+        cursorListView.setAdapter(cursorAdapter);
+
+    }
+
     /**
      * A placeholder fragment containing a simple view.
      */
     //the activities themselves
     public static class PlaceholderFragment extends Fragment implements View.OnClickListener, View.OnLongClickListener {
+        private static final String ARG_SECTION_NUMBER = "section_number";
         /**
          * The fragment argument representing the section number for this
          * fragment.
@@ -888,7 +929,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         private Cursor cursor;
         private DAL dal;
         private SimpleCursorAdapter cursorAdapter;
-        private static final String ARG_SECTION_NUMBER = "section_number";
         private ListView cursorListView;
         private View rootView;
         private String[] entries = new String[]{Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum, Contacts.ContactsTable.userID};
@@ -1006,26 +1046,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         public boolean onLongClick(View v) {
             return false;
         }
-    }
-    //Initialize views
-    private void initViews() {
-        mViewPager = (ViewPager) findViewById(R.id.container);
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        fab = (FloatingActionButton) findViewById(R.id.fab);
-        tab = (TabLayout) findViewById(R.id.tabs);
-        cursorListView = (ListView) findViewById(R.id.cursorListView);
-        compassView = (CompassView)findViewById(R.id.myView);
-
-    }
-    //Function to update contacts list after adding to DB.
-    private void getContacts() {
-        cursorListView = (ListView) findViewById(R.id.cursorListView);
-        Cursor cursor = dal.getAllTimeEntriesCursor();
-        String[] entries = new String[]{Contacts.ContactsTable.userName, Contacts.ContactsTable.phoneNum, Contacts.ContactsTable.userID};
-        int[] viewsID = new int[]{R.id.userNameTextView, R.id.userPhoneTextView, R.id.userIdTextView};
-        SimpleCursorAdapter cursorAdapter = new SimpleCursorAdapter(getApplicationContext(), R.layout.contact, cursor, entries, viewsID, BIND_ABOVE_CLIENT);
-        cursorListView.setAdapter(cursorAdapter);
-
     }
 
 

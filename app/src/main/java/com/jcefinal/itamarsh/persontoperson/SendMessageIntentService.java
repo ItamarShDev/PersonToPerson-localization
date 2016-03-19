@@ -9,7 +9,6 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.android.volley.DefaultRetryPolicy;
-import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -28,11 +27,11 @@ import java.io.IOException;
  * Created by olesya on 28-Jan-16.
  */
 public class SendMessageIntentService extends IntentService {
+    private static final String TAG = "mydebug";
+    private static final String SENDER_ID = "186698592995";
     private SharedPreferences memory;
     private GoogleCloudMessaging gcm;
     private Context context;
-    private static final String TAG ="mydebug";
-    private static final String SENDER_ID = "186698592995";
     private String token;
     private RequestQueue queue;
     private Helper helper = new Helper();
@@ -149,8 +148,7 @@ public class SendMessageIntentService extends IntentService {
     }
 
     /*preparing json body for registration to GCM server*/
-    private void registerToServer()
-    {
+    private void registerToServer() {
         String op = "register";
         SharedPreferences memory;
         memory = context.getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
@@ -172,8 +170,7 @@ public class SendMessageIntentService extends IntentService {
         sendToServer(op, jsonBody);
     }
 
-    private void findContact(String to)
-    {
+    private void findContact(String to) {
         String op = "contact";
         String hashString = helper.encode(to);
 

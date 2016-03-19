@@ -14,32 +14,25 @@ import android.os.IBinder;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+
 /*
  * This class responsible for running location listener, getting updates, in background
  */
 public class LocationService extends Service implements LocationListener {
     private static final String TAG = "LocationService";
+    private final static int NETWORK_ON = 0, GPS_ON = 2;
+    private final IBinder mBinder = new LocalBinder();
+    private int WIFI_ON = 1;
     private Location currentLocation;
     private boolean gpsOn, networkOn;
-    private final static int NETWORK_ON = 0, GPS_ON = 2;
     private SharedPreferences memory;
     private LocationListener locListener;
-    private final IBinder mBinder = new LocalBinder();
     private LocationManager locationManager;
+
     public LocationService() {
 
     }
-    /**
-     * Class used for the client Binder.  Because we know this service always
-     * runs in the same process as its clients, we don't need to deal with IPC.
-     */
-    public class LocalBinder extends Binder {
 
-        LocationService getService() {
-            // Return this instance of LocalService so clients can call public methods
-            return LocationService.this;
-        }
-    }
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(TAG, "onStartCommand");
@@ -48,20 +41,17 @@ public class LocationService extends Service implements LocationListener {
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
         gpsOn = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
         networkOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-        Log.i(TAG, "GPS is "+gpsOn);
+        Log.i(TAG, "GPS is " + gpsOn);
         if (!gpsOn) {
             showDialog(GPS_ON);
         }
-        if ((!networkOn) && gpsOn) {
-            showDialog(NETWORK_ON);
-        }
         Criteria c = new Criteria();
-        c.setAccuracy(Criteria.ACCURACY_COARSE);
+        c.setAccuracy(Criteria.ACCURACY_FINE);
         c.setPowerRequirement(Criteria.POWER_HIGH);
         final String locationProvider = locationManager.getBestProvider(c, true);
         try {
             currentLocation = locationManager.getLastKnownLocation(locationProvider);
-          locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locListener);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locListener);
 
         } catch (SecurityException s) {
@@ -71,25 +61,27 @@ public class LocationService extends Service implements LocationListener {
 
         return super.onStartCommand(intent, flags, startId);
     }
+
     //This function will call function from main activity - to show dialog
     private void showDialog(int type) {
         Intent intent = new Intent("show-dialog");
         intent.putExtra("type", type);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
+
     @Override
     public IBinder onBind(Intent intent) {
-        Log.i(TAG, "OnBind");
         return mBinder;
     }
 
     public Location getLastLocation(){
         return currentLocation;
     }
+
     @Override
     public void onDestroy() {
         Log.i(TAG, "OnDestroy");
-        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+//        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         locListener = this;
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
@@ -100,9 +92,11 @@ public class LocationService extends Service implements LocationListener {
 
     @Override
     public void onLocationChanged(Location location) {
+        Log.i("Location Service", "Location Changed");
         currentLocation = location;
         // Called when a new location is found by the network location provider.
         Helper.sendMessage(getBaseContext(), "message", memory.getString("to", ""), location.getLongitude() + "," + location.getLatitude());
+
     }
 
     @Override
@@ -118,5 +112,17 @@ public class LocationService extends Service implements LocationListener {
     @Override
     public void onProviderDisabled(String provider) {
 
+    }
+
+    /**
+     * Class used for the client Binder.  Because we know this service always
+     * runs in the same process as its clients, we don't need to deal with IPC.
+     */
+    public class LocalBinder extends Binder {
+
+        LocationService getService() {
+            // Return this instance of LocalService so clients can call public methods
+            return LocationService.this;
+        }
     }
 }
