@@ -13,12 +13,8 @@
         android:textSize="24sp"
         android:gravity="center_horizontal|center_vertical"
         android:background="#1565C0"
-<<<<<<< HEAD
-        android:contentDescription="@string/app_name"
-  />
-=======
         android:contentDescription="@string/app_name"/>
->>>>>>> 70bae33d36f3c9597a7581fc2b6aadd5b04f45d3
+
     <EditText
         android:id="@+id/username"
         android:inputType="textPersonName"

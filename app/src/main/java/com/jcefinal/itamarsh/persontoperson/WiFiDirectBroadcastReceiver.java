@@ -53,8 +53,7 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
             WifiP2pDevice device = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
             String thisDeviceName = device.deviceAddress;
             Log.i("P2P", "My Device Name "+thisDeviceName);
-//            new GcmRegistrationAsyncTask(mActivity).execute("message", "053", thisDeviceName);
-        }
+       }
     }
 }
 //f2:27:65:d4:c3:81
