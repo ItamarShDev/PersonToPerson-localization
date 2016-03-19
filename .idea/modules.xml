@@ -2,7 +2,11 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+<<<<<<< HEAD
       <module fileurl="file://$PROJECT_DIR$/PersonToPerson-localization.iml" filepath="$PROJECT_DIR$/PersonToPerson-localization.iml" />
+=======
+      <module fileurl="file://$PROJECT_DIR$/Find_Your_Friends.iml" filepath="$PROJECT_DIR$/Find_Your_Friends.iml" />
+>>>>>>> 70bae33d36f3c9597a7581fc2b6aadd5b04f45d3
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>

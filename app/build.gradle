@@ -28,4 +28,8 @@ dependencies {
     compile 'com.android.support:design:23.1.1'
     compile 'com.google.android.gms:play-services-gcm:8.4.0'
     compile 'com.mcxiaoke.volley:library:1.0.19'
+<<<<<<< HEAD
+=======
+    compile 'com.google.android.gms:play-services:8.4.0'
+>>>>>>> 70bae33d36f3c9597a7581fc2b6aadd5b04f45d3
 }

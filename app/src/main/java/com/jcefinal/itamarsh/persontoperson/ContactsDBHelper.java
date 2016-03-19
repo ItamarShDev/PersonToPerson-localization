@@ -6,9 +6,10 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 /**
  * Created by itamar on 27-Nov-15.
+ * This class responsible for creating DB in SQLIte and dropping it on version change
  */
 public class ContactsDBHelper extends SQLiteOpenHelper{
-public static final int DATABASE_VER = 1;
+public static final int DATABASE_VER = 3;
 public static final String DB_NAME = "contacts.db";
         public ContactsDBHelper(Context context)
         {
@@ -19,7 +20,9 @@ public static final String DB_NAME = "contacts.db";
             db.execSQL("CREATE TABLE " + Contacts.ContactsTable.TABLE_NAME + " (" + Contacts.ContactsTable._ID +
                     " INTEGER PRIMARY KEY AUTOINCREMENT," + Contacts.ContactsTable.userID + " TEXT, "
                     + Contacts.ContactsTable.userName + " TEXT, "
-                    + Contacts.ContactsTable.phoneNum + " TEXT "
+                    + Contacts.ContactsTable.phoneNum + " TEXT, "
+                    + Contacts.ContactsTable.hashedPhone + " TEXT, "
+                    + "UNIQUE("+ Contacts.ContactsTable.phoneNum + ") ON CONFLICT IGNORE"
                     + ");");
 
         }

@@ -19,6 +19,7 @@
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="@string/userName"
         android:id="@+id/userNameTextView"
+        android:textColor="#000000"
         android:layout_toEndOf="@+id/ContactImageButton"
         android:textAlignment="viewStart"
         android:layout_alignParentEnd="true" />
@@ -29,10 +30,10 @@
         android:text="@string/phone"
         android:id="@+id/userPhoneTextView"
         android:layout_alignTop="@+id/userIdTextView"
-        android:textColor="#bfbebe"
+        android:textColor="#000000"
         android:layout_toEndOf="@+id/userIdTextView"
         android:layout_alignParentEnd="true"
-        android:textAlignment="viewEnd" />
+        android:textAlignment="viewStart" />
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

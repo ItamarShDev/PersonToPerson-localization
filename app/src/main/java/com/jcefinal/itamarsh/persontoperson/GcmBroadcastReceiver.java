@@ -8,6 +8,10 @@ import android.support.v4.content.WakefulBroadcastReceiver;
 
 /**
  * Created by itamar on 25-Dec-15.
+<<<<<<< HEAD
+=======
+ * This class responsible for gcm messages receiving, and will call GcmIntentService to treat the message that arrived
+>>>>>>> 70bae33d36f3c9597a7581fc2b6aadd5b04f45d3
  */
 public class GcmBroadcastReceiver extends WakefulBroadcastReceiver {
     @Override
