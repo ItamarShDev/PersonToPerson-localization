@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -77,7 +78,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     private static final String MODE_APPROVE = "approve", MODE_STOP = "stop_search", MESSAGE_RECEIVER = "my-event", SHOW_DIALOG ="show-dialog";
     private static final int RED = 2, BLUE = 0, PINK = 1, PLAY = 1,ADD= 0, PAUSE = 2;
-    private final static int WIFI_ON = 1, GPS_ON = 2, BT_ON = 3;
+    private final static int WIFI_ON = 1, GPS_ON = 2, BT_ON = 3, BT_SHOW = 4;
     private static final String TAG = "myDebug";
     private final int MIN_GPS_RADIUS = 30, BT_ON_RADIUS = 15;
     private final IntentFilter intentFilter = new IntentFilter();
@@ -86,6 +87,20 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     public int[] iconIntArray = {R.drawable.ic_add_white_24dp, R.drawable.ic_play_arrow_white_24dp, R.drawable.ic_pause_white_24dp};
     boolean play;
     boolean gpsOn, networkOn;
+    ArrayList<String> mArrayAdapter;
+    // Create a BroadcastReceiver for ACTION_FOUND
+    private final BroadcastReceiver mBTReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            // When discovery finds a device
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                // Get the BluetoothDevice object from the Intent
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                // Add the name and address to an array adapter to show in a ListView
+                mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+            }
+        }
+    };
     private BroadcastReceiver mReceiver;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
@@ -119,9 +134,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
-
-
-
     private boolean receiving = false;
     /**
      * Defines callbacks for service binding, passed to bindService()
@@ -329,6 +341,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             Helper.sendMessage(this, "message", memory.getString("to", ""), Helper.STOP_SEARCH);
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
+            unregisterReceiver(mBTReceiver);
             if (mSensorManager != null)
                 mSensorManager.unregisterListener(sensorEventListener);
         } catch (SecurityException s) {
@@ -384,14 +397,15 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             else {
                 stopSearch();
             }
-        }
-        if (requestCode == WIFI_ON) {
+        } else if (requestCode == WIFI_ON) {
             if (resultCode == RESULT_OK)
                 WIFI = true;
-        }
-        if (requestCode == BT_ON) {
+        } else if (requestCode == BT_ON) {
             if (resultCode == RESULT_OK)
                 BT = true;
+        } else if (requestCode == BT_SHOW) {
+            if (resultCode == RESULT_CANCELED)
+                Toast.makeText(this, "Bluetooth isnt helping much now :(", Toast.LENGTH_LONG).show();
         }
 
     }
@@ -456,6 +470,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 // Bluetooth is not enable :)
                 Log.i("BlueTooth", "enabled");
                 BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+                // Register the BroadcastReceiver
+                IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+                registerReceiver(mBTReceiver, filter); // Don't forget to unregister during onDestroy
+                Intent discoverableIntent = new
+                        Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+                discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+                startActivityForResult(discoverableIntent, BT_SHOW);
 
                 Method getUuidsMethod = null;
                 try {
