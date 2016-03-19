@@ -7,6 +7,7 @@ import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.support.v4.app.ActivityCompat;
 
+/* This class treat's Location Permissions*/
 public class LocationSettings {
 
         private Activity mActivity;

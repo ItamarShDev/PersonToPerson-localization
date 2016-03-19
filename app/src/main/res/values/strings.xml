@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">PersonToPerson</string>
+    <string name="app_name">Find Your Friend</string>
     <string name="add_contact_message">Add Contact</string>
     <string name="add_contact_title">Add New Contact</string>
     <string name="phone">Phone Number</string>
@@ -104,4 +104,9 @@
     <string name="title_activity_second">SecondActivity</string>
     <string name="title_activity_main_screen">MainScreenActivity</string>
     <string name="section_format">Hello World from section: %1$d</string>
+    <string name="welcomeString">Welcome to \"Find Your Friend\"!</string>
+    <string name="enterPhoneString">Please enter your phone number and your name:</string>
+    <string name="requestSentString">Request sent to</string>
+    <string name="requestSentBodyString">Hi! Your request is now sent to your friend. Please wait patiently for the response. You will be notified about the decision</string>
+    <string name="distanceString">Distance</string>
 </resources>

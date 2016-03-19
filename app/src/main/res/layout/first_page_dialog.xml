@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:weightSum="1">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:scaleType="center"
+        android:text="@string/welcomeString"
+        android:textColor="@android:color/white"
+        android:textSize="20sp"
+        android:gravity="center_horizontal|center_vertical"
+        android:background="#1565C0"
+        android:contentDescription="@string/app_name"
+        />
+
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="@string/enterPhoneString"
+        android:id="@+id/enterPhone"
+        android:textSize="15sp"
+        android:layout_weight="0.1" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="textPersonName"
+        android:hint="@string/add_contact_name"
+        android:ems="10"
+        android:id="@+id/editTextUserName"
+        android:layout_gravity="center_horizontal" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="phone"
+        android:ems="10"
+        android:id="@+id/editTextPhone"
+        android:layout_gravity="center_horizontal"
+        android:layout_weight="0.05"
+        android:hint="@string/phone"/>
+
+</LinearLayout>

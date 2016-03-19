@@ -7,6 +7,7 @@
         android:gravity="center"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+<<<<<<< HEAD
         android:text="BT disabled"
         android:id="@+id/textView3"
         android:layout_gravity="center_horizontal" />
@@ -17,6 +18,10 @@
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Your Location Here"
+=======
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="Your Location"
+>>>>>>> 70bae33d36f3c9597a7581fc2b6aadd5b04f45d3
         android:id="@+id/textView"
         android:layout_gravity="center_horizontal" />
 
@@ -26,7 +31,19 @@
         android:layout_height="wrap_content"
         android:minLines="2"
         android:textAppearance="?android:attr/textAppearanceLarge"
+<<<<<<< HEAD
         android:text="Large Text"
         android:id="@+id/distanceText" />
 
+=======
+        android:text="@string/distanceString"
+        android:id="@+id/distanceText" />
+
+    <com.jcefinal.itamarsh.persontoperson.CompassView
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:id="@+id/myView"
+        android:layout_gravity="center_horizontal" />
+
+>>>>>>> 70bae33d36f3c9597a7581fc2b6aadd5b04f45d3
 </LinearLayout>
