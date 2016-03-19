@@ -14,7 +14,9 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.os.ParcelUuid;
@@ -63,6 +65,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
      * may be best to switch to a
      * {@link FragmentStatePagerAdapter}.
      */
+    private WifiManager wifi;
+    private WifiInfo info;
     private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
@@ -74,7 +78,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     public int[] iconIntArray = {R.drawable.ic_add_white_24dp, R.drawable.ic_play_arrow_white_24dp, R.drawable.ic_stop_white_24dp};
     private FloatingActionButton fab;
     private Toolbar toolbar;
-    private String message = "Add Contact";
+    private String message = "Add Contact" , address;
     boolean play;
     private TextView m;
     private LocationManager locationManager;
@@ -165,12 +169,15 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             float d = 0;
             if(correntLocation!=null){
                 String location[] = message.split(",");
-                String loc = "\nYour Location: \n" + correntLocation.getLongitude() + "," + correntLocation.getLatitude();
+                String loc = "\nYour Location: \n" + correntLocation.getLongitude()
+                        + "," + correntLocation.getLatitude()
+                        +"\nUsing: "+correntLocation.getProvider()
+                        +"\nAccuracy: "+correntLocation.getAccuracy();
                 l.setLongitude(Float.valueOf(location[0]));
                 l.setLatitude(Float.valueOf(location[1]));
                 d = correntLocation.distanceTo(l);
                 Log.i("DISTANCE", ""+d);
-                String dtLoc = "Friend Location: "+message+"\nDistance: "+d;
+                String dtLoc = "\nFriend Location: "+message+"\n\nDistance: "+d;
                 TextView locationText = (TextView)findViewById(R.id.distanceText);
                 locationText.setText(dtLoc);
                 TextView m = (TextView) findViewById(R.id.textView);
@@ -192,15 +199,35 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     private void wifi() {
         Log.i("ALGO", "WiFi Range");
-        WifiManager wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+        wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+        info = wifi.getConnectionInfo();
+        address = info.getMacAddress();
+        Log.i("WiFi Addredd", address);
         if (!wifi.isWifiEnabled()){
             buildAlertMessageNoGps(WIFI_ON);
         }else{
             Log.i("ALGO", "WiFi On");
+
             mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
                     Log.i("P2P", "discoverPeers SUCCESS");
+                    if (mManager != null) {
+                        Log.i("P2P","Searching Peers");
+                        mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
+
+                            @Override
+                            public void onPeersAvailable(WifiP2pDeviceList peers) {
+                                Log.d("P2P", String.format("PeerListListener: %d peers available, updating device list", peers.getDeviceList().size()));
+                                Toast.makeText(getApplicationContext(),
+                                        String.format("PeerListListener: %d peers available, updating device list",
+                                                peers.getDeviceList().size()), Toast.LENGTH_SHORT).show();
+                                // DO WHATEVER YOU WANT HERE
+                                // YOU CAN GET ACCESS TO ALL THE DEVICES YOU FOUND FROM peers OBJECT
+
+                            }
+                        });
+                    }
                 }
 
                 @Override
