@@ -72,11 +72,12 @@ import org.json.JSONObject;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
     /*Define variables */
 
-    private static final String MODE_APPROVE = "approve", MODE_STOP = "stop_search", MESSAGE_RECEIVER = "my-event", SHOW_DIALOG = "show-dialog";
+    private static final String BT_DATA = "bluetooth", MODE_APPROVE = "approve", MODE_STOP = "stop_search", MESSAGE_RECEIVER = "my-event", SHOW_DIALOG = "show-dialog";
     private static final int RED = 2, BLUE = 0, PINK = 1, PLAY = 1, ADD = 0, PAUSE = 2;
     private final static int WIFI_ON = 1, GPS_ON = 2, BT_ON = 3, BT_SHOW = 4;
     private static final String TAG = "myDebug";
@@ -88,21 +89,35 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     boolean play;
     boolean gpsOn, networkOn;
     private ArrayList<String> mArrayAdapter;
-    /**************************************************************************************************/
-
+    /* BR for Bluetooth*/
     private final BroadcastReceiver mBTReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
+            String message = intent.getStringExtra("info").split("UUID")[1];
+            UUID uuid = UUID.fromString(message);
+            Toast.makeText(context, "UUID Got: " + message, Toast.LENGTH_LONG).show();
             String action = intent.getAction();
             // When discovery finds a device
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                Toast.makeText(context, "bt - action found", Toast.LENGTH_LONG).show();
                 // Get the BluetoothDevice object from the Intent
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // Add the name and address to an array adapter to show in a ListView
                 mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
-                Log.i("BLUETOOTH", mArrayAdapter.toString());
+                for (ParcelUuid u : device.getUuids()) {
+                    if (u.getUuid().compareTo(uuid) == 0) {
+                        ConnectThread ct = new ConnectThread(device, uuid);
+                        ct.run();
+                    }
+                }
+                Log.d("BLUETOOTH", mArrayAdapter.toString());
+                int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
+                Toast.makeText(getApplicationContext(), "  RSSI: " + rssi + "dBm", Toast.LENGTH_SHORT).show();
             }
         }
     };
+    /**************************************************************************************************/
+
+
     private BroadcastReceiver mReceiver;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
@@ -131,7 +146,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private ViewPager mViewPager; //The {@link ViewPager} that will host the section contents.
     private boolean mBound;
     private LocationService locationService;
-    private WifiManager wifi;
     private WifiInfo info;
     private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
@@ -198,10 +212,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         }
     };
-    /**************************************************************************************************/
-    /************************************
-     * BR for Bluetooth
-     **********************************************/
     //BR for DIALOGS
     private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
         @Override
@@ -251,7 +261,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         // prompt for phone number and name only when application first installed *
         //*************************************************************************
         if (memory.getString("myphone", "").isEmpty()) {
-            Log.i(TAG, "in if");
             FirstPageDialog alert = new FirstPageDialog();
             alert.setCancelable(false);
             alert.show(getFragmentManager(), null);
@@ -272,8 +281,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         Intent i = getIntent();
         String action = i.getAction();
         int tabToOpen = i.getIntExtra("loc", -1);
-        Log.i(TAG, "Extra is " + tabToOpen);
-        Log.i(TAG, "action is " + action);
         if (tabToOpen != -1) { //If was opened from Notification, extra will be given
             NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
             nm.cancel(0); //Cancel all notifications
@@ -286,8 +293,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     String to = i.getStringExtra("to");
                     SharedPreferences.Editor edit = memory.edit();
                     edit.putString("to", to);
+                    edit.putString("bt_status", "server");
+
                     edit.apply();
-                    Log.i("after noti", "to" + to);
                     Helper.sendMessage(getApplicationContext(), "message", to, Helper.APPROVED);
                 } else if (tabToOpen == 2) {
                     receiving = true;
@@ -353,7 +361,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             if (mSensorManager != null)
                 mSensorManager.unregisterListener(sensorEventListener);
         } catch (SecurityException s) {
-            Log.i(TAG, "Security exception");
+            Log.e(TAG, "Security exception");
         }
     }
 
@@ -423,12 +431,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         if (distance < 15) {
             blueTooth();
         } else if (distance < 30) {
-            wifi();
+//            wifi();
         }
 
     }
 
     private void wifi() {
+        WifiManager wifi;
         Log.i("ALGO", "WiFi Range");
         wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         info = wifi.getConnectionInfo();
@@ -478,11 +487,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             //if bluetooth is on
             if (mBluetoothAdapter.isEnabled()) {
                 // Bluetooth is not enable :)
-                Log.i("BlueTooth", "enabled");
                 BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-                // Register the BroadcastReceiver
-                IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-                registerReceiver(mBTReceiver, filter); // Don't forget to unregister during onDestroy
                 //check if bt discoverable
                 if (mBluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
                     //show the "get discoverable" activity
@@ -490,6 +495,17 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                             Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
                     discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
                     startActivityForResult(discoverableIntent, BT_SHOW);
+                }
+                String type = memory.getString("bt_status", "");
+                Log.d("BLUETOOTH", "found " + type);
+                if (type.equals("client")) {
+                    // Register the BroadcastReceiver
+                    IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+                    registerReceiver(mBTReceiver, filter); // Don't forget to unregister during onDestroy
+
+                } else if (type.equals("server")) {
+                    BlueToohServer bs = new BlueToohServer(getBaseContext());
+                    bs.run();
                 }
                 Method getUuidsMethod = null;
                 try {
@@ -506,9 +522,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 } catch (InvocationTargetException e) {
                     e.printStackTrace();
                 }
-
+                int i = 0;
+                Log.d("BT_UUID", "Num of UUIDs: " + uuids.length);
                 for (ParcelUuid uuid : uuids) {
-                    Log.d("BT_UUID", "UUID: " + uuid.getUuid().toString());
+                    Log.d("BT_UUID", "[" + i + "] UUID: " + uuid.getUuid().toString());
+                    i++;
                 }
             } else { //if bluetooth is off
                 Log.i("BlueTooth", "disabled");
@@ -525,6 +543,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 new IntentFilter(MESSAGE_RECEIVER));
         LocalBroadcastManager.getInstance(this).registerReceiver(mDialogShow,
                 new IntentFilter(SHOW_DIALOG));
+        LocalBroadcastManager.getInstance(this).registerReceiver(mBTReceiver,
+                new IntentFilter(BT_DATA));
         if (mSensorManager != null)
             mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
     }
@@ -602,9 +622,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
-                        Log.e("myDebug", "dialog on dismiss");
                         getContacts();
-                        Log.i(TAG, "not_exist " + memory.getBoolean("not_exist", false));
                         if (memory.getBoolean("add", false)) {
                             ArrayList<String> l = new ArrayList<String>();
                             ArrayList<String> l2 = new ArrayList<String>();
@@ -614,10 +632,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                         }
                     }
                 });
-                Log.e("myDebug", "action button was pressed, and first tab selected");
                 break;
             case 1: // tab 1 selected, stop location transmission
-                Log.i("BOUND", "mBound is " + mBound);
                 m = (TextView) findViewById(R.id.textView);
                 if (!mBound && !receiving) {
                     Snackbar.make(view, "Please Select a Contact", Snackbar.LENGTH_LONG).setAction("Action", null).show();
@@ -631,7 +647,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                             if (mSensorManager != null)
                                 mSensorManager.unregisterListener(sensorEventListener);
                         } catch (SecurityException s) {
-                            Log.i(TAG, "Security exception");
+                            Log.e(TAG, "Security exception");
                         }
                     } else {
                         startService(service);
@@ -709,7 +725,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             @Override
             public void onAnimationEnd(Animation animation) {
                 // Change FAB color and icon
-                Log.i("PLAY", "play is " + mBound);
                 int p = position == 0 ? 0 : position - 1;
                 int pos = position;
                 if (mBound && (position == 1))
@@ -786,12 +801,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             list.add(helper.encode(i));
         }
         JSONArray arr = new JSONArray(list);
-        Log.i(TAG, "json array" + arr);
         JSONObject jsonBody = new JSONObject();
         try { //Got the list of friends, need to add them to contacts list
             jsonBody.put("contacts", arr);
         } catch (JSONException e) {
-            Log.i(TAG, "json error" + e.getMessage());
+            Log.e(TAG, "json error" + e.getMessage());
         }
         Log.i(TAG, "in find contact after building json " + jsonBody);
 
@@ -826,7 +840,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                 inviteFriend();
                             }
                         } catch (JSONException e) {
-                            Log.i(TAG, "Error on response " + e.getMessage());
+                            Log.e(TAG, "Error on response " + e.getMessage());
                         }
                         getContacts();
                     }
@@ -836,9 +850,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     public void onErrorResponse(VolleyError error) {
                         dialog.cancel();
                         try {
-                            Log.i(TAG, error.toString());
+                            Log.e(TAG, error.toString());
                         } catch (NullPointerException e) {
-                            Log.i(TAG, "Volley Error");
+                            Log.e(TAG, "Volley Error");
                         }
 
                     }
@@ -1008,10 +1022,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                     }
                                 })
                                 .show();
-
-                        Log.i(TAG, "name" + dal.getName(position));
-                        Log.e("myDebug", "item in list clicked");
-
                     }
 
                 });

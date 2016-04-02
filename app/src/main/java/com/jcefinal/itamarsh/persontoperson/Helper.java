@@ -18,8 +18,21 @@ public class Helper {
     public static final String APPROVED = "Approved the search ";
     public static final String STOP_SEARCH = "Search Stopped";
     public static final int MY_SOCKET_TIMEOUT_MS = 10000;
-    private static final String TAG = "myDebug";
     public static final String SERVER_ADDR = "http://p2p-gcm-server2.appspot.com/";
+    private static final String TAG = "myDebug";
+
+    //This function call to send message intent service with arguments that was sent to function
+    public static void sendMessage(Context context, String op, String to, String content) {
+        Intent msgIntent = new Intent(context, SendMessageIntentService.class);
+        Log.i(TAG, "in sendMessage, " +
+                "content " + content +
+                " op " + op +
+                " to " + to);
+        msgIntent.putExtra("operation", op);
+        msgIntent.putExtra("to", to);
+        msgIntent.putExtra("content", content);
+        context.startService(msgIntent);
+    }
 
     /* This function responsible for encoding string to SHA-256*/
     public String encode(String num)
@@ -35,15 +48,5 @@ public class Helper {
         catch (NoSuchAlgorithmException e)
         {}
         return hashString;
-    }
-    //This function call to send message intent service with arguments that was sent to function
-    public static void sendMessage(Context context, String op, String to, String content)
-    {
-        Intent msgIntent = new Intent(context, SendMessageIntentService.class);
-        Log.i(TAG, "in sendMessage, content" + content);
-        msgIntent.putExtra("operation", op);
-        msgIntent.putExtra("to", to);
-        msgIntent.putExtra("content", content);
-        context.startService(msgIntent);
     }
 }
