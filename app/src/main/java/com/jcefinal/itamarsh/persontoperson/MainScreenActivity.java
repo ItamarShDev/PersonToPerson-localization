@@ -76,8 +76,8 @@ import java.util.ArrayList;
 public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
     /*Define variables */
 
-    private static final String MODE_APPROVE = "approve", MODE_STOP = "stop_search", MESSAGE_RECEIVER = "my-event", SHOW_DIALOG ="show-dialog";
-    private static final int RED = 2, BLUE = 0, PINK = 1, PLAY = 1,ADD= 0, PAUSE = 2;
+    private static final String MODE_APPROVE = "approve", MODE_STOP = "stop_search", MESSAGE_RECEIVER = "my-event", SHOW_DIALOG = "show-dialog";
+    private static final int RED = 2, BLUE = 0, PINK = 1, PLAY = 1, ADD = 0, PAUSE = 2;
     private final static int WIFI_ON = 1, GPS_ON = 2, BT_ON = 3, BT_SHOW = 4;
     private static final String TAG = "myDebug";
     private final int MIN_GPS_RADIUS = 30, BT_ON_RADIUS = 15;
@@ -99,6 +99,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // Add the name and address to an array adapter to show in a ListView
                 mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+                Log.i("BLUETOOTH", mArrayAdapter.toString());
             }
         }
     };
@@ -135,7 +136,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
-
     /**************************************************************************************************/
 /*                                 BROADCAST RECEIVERS                                            */
     private boolean receiving = false;
@@ -198,6 +198,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         }
     };
+    /**************************************************************************************************/
+    /************************************
+     * BR for Bluetooth
+     **********************************************/
     //BR for DIALOGS
     private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
         @Override
@@ -222,7 +226,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_screen);
         initViews();
-        service = new Intent(this,LocationService.class);
+        service = new Intent(this, LocationService.class);
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
         mBound = false;
         setSupportActionBar(toolbar);
@@ -258,8 +262,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     Helper.sendMessage(getBaseContext(), "register", null, null);
                 }
             });
-        }
-        else {
+        } else {
             Helper.sendMessage(getBaseContext(), "register", null, null); //register with number and name that saved in SP
         }
 
@@ -271,43 +274,40 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         int tabToOpen = i.getIntExtra("loc", -1);
         Log.i(TAG, "Extra is " + tabToOpen);
         Log.i(TAG, "action is " + action);
-        if (tabToOpen!=-1) { //If was opened from Notification, extra will be given
-            NotificationManager nm = (NotificationManager)getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        if (tabToOpen != -1) { //If was opened from Notification, extra will be given
+            NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
             nm.cancel(0); //Cancel all notifications
-            if(action.equals(MODE_APPROVE)) { // make sure action is approve
+            if (action.equals(MODE_APPROVE)) { // make sure action is approve
                 m = (TextView) findViewById(R.id.textView);
                 mViewPager.setCurrentItem(1);
                 setSearchStatus(true, 1);
                 setMessage(1);
-                if(tabToOpen == 1) {//when approving request
+                if (tabToOpen == 1) {//when approving request
                     String to = i.getStringExtra("to");
                     SharedPreferences.Editor edit = memory.edit();
                     edit.putString("to", to);
                     edit.apply();
-                    Log.i("after noti","to" + to);
+                    Log.i("after noti", "to" + to);
                     Helper.sendMessage(getApplicationContext(), "message", to, Helper.APPROVED);
-                }
-                else if(tabToOpen == 2){
+                } else if (tabToOpen == 2) {
                     receiving = true;
                     //Register broadcast receiver
                 }
                 startService(service);
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
-            }
-            else if(action.equals(MODE_STOP)){
-                try{
+            } else if (action.equals(MODE_STOP)) {
+                try {
                     stopService(service);
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
                     setSearchStatus(false, 0);
                     receiving = false;
                     Toast.makeText(this, "Search stopped", Toast.LENGTH_SHORT).show();
-                }catch (SecurityException e){
-                    Log.e("LOCATION",e.toString());
+                } catch (SecurityException e) {
+                    Log.e("LOCATION", e.toString());
                 }
             }
-        }
-        else {
+        } else {
             readContacts();
         }
 
@@ -345,7 +345,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             Helper.sendMessage(this, "message", memory.getString("to", ""), Helper.STOP_SEARCH);
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
-            unregisterReceiver(mBTReceiver);
+            try {
+                LocalBroadcastManager.getInstance(this).unregisterReceiver(mBTReceiver);
+            } catch (IllegalArgumentException e) {
+
+            }
             if (mSensorManager != null)
                 mSensorManager.unregisterListener(sensorEventListener);
         } catch (SecurityException s) {
@@ -354,16 +358,15 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     }
 
     //        Set colors and the icon of fab depends on search status
-    private void setSearchStatus(boolean status, int tab){
-        if(tab == 0){
-            setFloatingActionButtonColors(fab,colorIntArray[BLUE],colorIntArray[PINK], iconIntArray[ADD]);
-        }else{
+    private void setSearchStatus(boolean status, int tab) {
+        if (tab == 0) {
+            setFloatingActionButtonColors(fab, colorIntArray[BLUE], colorIntArray[PINK], iconIntArray[ADD]);
+        } else {
 
-            if(status){
-                setFloatingActionButtonColors(fab,colorIntArray[RED],colorIntArray[PINK], iconIntArray[PAUSE]);
-            }
-            else{
-                setFloatingActionButtonColors(fab,colorIntArray[PINK],colorIntArray[BLUE], iconIntArray[PLAY]);
+            if (status) {
+                setFloatingActionButtonColors(fab, colorIntArray[RED], colorIntArray[PINK], iconIntArray[PAUSE]);
+            } else {
+                setFloatingActionButtonColors(fab, colorIntArray[PINK], colorIntArray[BLUE], iconIntArray[PLAY]);
             }
         }
     }
@@ -380,7 +383,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 rippleColor,
         };
         int color;
-        if(primaryColor==colorIntArray[BLUE])
+        if (primaryColor == colorIntArray[BLUE])
             color = BLUE;
         else
             color = PINK;
@@ -409,15 +412,17 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 BT = true;
         } else if (requestCode == BT_SHOW) {
             if (resultCode == RESULT_CANCELED)
-                Toast.makeText(this, "Bluetooth isnt helping much now :(", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, R.string.bt_disabled, Toast.LENGTH_LONG).show();
+            else
+                Toast.makeText(this, R.string.bt_started, Toast.LENGTH_LONG).show();
         }
 
     }
 
     private void distanceAlgo(float distance) {
-        if (distance < 15){
+        if (distance < 15) {
             blueTooth();
-        } else if (distance < 30){
+        } else if (distance < 30) {
             wifi();
         }
 
@@ -425,13 +430,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     private void wifi() {
         Log.i("ALGO", "WiFi Range");
-        wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+        wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         info = wifi.getConnectionInfo();
         String address = info.getMacAddress();
         Log.i("WiFi Addredd", address);
         if (!wifi.isWifiEnabled()) {
             Log.i("ALGO", "WiFi Off");
-        }else{
+        } else {
             Log.i("ALGO", "WiFi On");
 
             mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
@@ -439,7 +444,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 public void onSuccess() {
                     Log.i("P2P", "discoverPeers SUCCESS");
                     if (mManager != null) {
-                        Log.i("P2P","Searching Peers");
+                        Log.i("P2P", "Searching Peers");
                         mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
 
                             @Override
@@ -464,12 +469,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
-    private void blueTooth(){
+    private void blueTooth() {
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
             Log.i("BlueTooth", "no bt");
             // Device does not support Bluetooth
         } else {
+            //if bluetooth is on
             if (mBluetoothAdapter.isEnabled()) {
                 // Bluetooth is not enable :)
                 Log.i("BlueTooth", "enabled");
@@ -477,11 +483,14 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 // Register the BroadcastReceiver
                 IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
                 registerReceiver(mBTReceiver, filter); // Don't forget to unregister during onDestroy
-                Intent discoverableIntent = new
-                        Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-                discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-                startActivityForResult(discoverableIntent, BT_SHOW);
-
+                //check if bt discoverable
+                if (mBluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
+                    //show the "get discoverable" activity
+                    Intent discoverableIntent = new
+                            Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+                    discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+                    startActivityForResult(discoverableIntent, BT_SHOW);
+                }
                 Method getUuidsMethod = null;
                 try {
                     getUuidsMethod = BluetoothAdapter.class.getDeclaredMethod("getUuids", null);
@@ -498,11 +507,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     e.printStackTrace();
                 }
 
-                for (ParcelUuid uuid: uuids) {
+                for (ParcelUuid uuid : uuids) {
                     Log.d("BT_UUID", "UUID: " + uuid.getUuid().toString());
                 }
-            }
-            else{
+            } else { //if bluetooth is off
                 Log.i("BlueTooth", "disabled");
                 mBluetoothAdapter.enable();
             }
@@ -510,14 +518,14 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     }
 
     @Override
-    public void onResume(){
+    public void onResume() {
         super.onResume();
         // Need to register again all broadcast receivers
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter(MESSAGE_RECEIVER));
         LocalBroadcastManager.getInstance(this).registerReceiver(mDialogShow,
                 new IntentFilter(SHOW_DIALOG));
-        if(mSensorManager!=null)
+        if (mSensorManager != null)
             mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
@@ -533,13 +541,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     // Alert message asking for user to enable GPS
     public void buildAlertMessageNoGps(final int type) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        String posType = type == GPS_ON ? "GPS":"WiFi";
-        final String cancel = type==GPS_ON?"Cancel Search":"No Thanks";
-        builder.setMessage("Your "+posType+" seems to be disabled, do you want to enable it?")
+        String posType = type == GPS_ON ? "GPS" : "WiFi";
+        final String cancel = type == GPS_ON ? "Cancel Search" : "No Thanks";
+        builder.setMessage("Your " + posType + " seems to be disabled, do you want to enable it?")
                 .setCancelable(false)
                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                     public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
-                        switch (type){
+                        switch (type) {
                             case GPS_ON:
                                 if (!GPS)
                                     startActivityForResult(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS), GPS_ON);
@@ -574,7 +582,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 message = "Add Contact";
                 break;
             case 1:
-                if( mBound)
+                if (mBound)
                     message = "Stopped Current Search";
                 else
                     message = "Long Press to Stop Current Search";
@@ -597,11 +605,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                         Log.e("myDebug", "dialog on dismiss");
                         getContacts();
                         Log.i(TAG, "not_exist " + memory.getBoolean("not_exist", false));
-                        if(memory.getBoolean("add", false)) {
+                        if (memory.getBoolean("add", false)) {
                             ArrayList<String> l = new ArrayList<String>();
                             ArrayList<String> l2 = new ArrayList<String>();
                             l.add(memory.getString("to", ""));
-                            l2.add(memory.getString("name",""));
+                            l2.add(memory.getString("name", ""));
                             sendToServer(1, l, l2);
                         }
                     }
@@ -609,18 +617,18 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 Log.e("myDebug", "action button was pressed, and first tab selected");
                 break;
             case 1: // tab 1 selected, stop location transmission
-                Log.i("BOUND", "mBound is "+mBound);
+                Log.i("BOUND", "mBound is " + mBound);
                 m = (TextView) findViewById(R.id.textView);
-                if(!mBound&&!receiving){
-                    Snackbar.make(view,"Please Select a Contact",Snackbar.LENGTH_LONG) .setAction("Action", null).show();
-                }else{
+                if (!mBound && !receiving) {
+                    Snackbar.make(view, "Please Select a Contact", Snackbar.LENGTH_LONG).setAction("Action", null).show();
+                } else {
                     if (mBound) {
                         try {
                             setSearchStatus(false, 1);
                             stopService(service);
                             mBound = false;
                             m.setText("Paused Location");
-                            if(mSensorManager!=null)
+                            if (mSensorManager != null)
                                 mSensorManager.unregisterListener(sensorEventListener);
                         } catch (SecurityException s) {
                             Log.i(TAG, "Security exception");
@@ -629,7 +637,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                         startService(service);
                         bindService(service, mConnection, Context.BIND_AUTO_CREATE);
                         setSearchStatus(true, 1);
-                        if(mSensorManager!=null)
+                        if (mSensorManager != null)
                             mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
                         m = (TextView) findViewById(R.id.textView);
                         m.setText("looking for location...");
@@ -644,11 +652,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     @Override
     public boolean onLongClick(View v) {
-        if(v==fab){
+        if (v == fab) {
             if (mBound) {
                 stopSearch();
-            }
-            else{
+            } else {
                 Snackbar.make(v, message, Snackbar.LENGTH_SHORT)
                         .setAction("Action", null).show();
             }
@@ -657,20 +664,19 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     }
 
     //Function to calculate angle of the phone relative to friend's location using sensors
-    private void getDirection()
-    {
-        compassView = (CompassView)findViewById(R.id.myView);
+    private void getDirection() {
+        compassView = (CompassView) findViewById(R.id.myView);
         double angle = 0;
-        if(locationService.getLastLocation() != null) {
+        if (locationService.getLastLocation() != null) {
             currentLocation = locationService.getLastLocation();
             angle = calculateAngle(currentLocation.getLongitude(), currentLocation.getLatitude(), target.getLongitude(), target.getLatitude());
         }
         //Correction;
-        angle-=90;
+        angle -= 90;
         //Correction for azimuth
-        angle-=azimuth;
-        while(angle<0)angle=angle+360;
-        if(compassView != null) {
+        angle -= azimuth;
+        while (angle < 0) angle = angle + 360;
+        if (compassView != null) {
             compassView.angle = (float) angle;
             compassView.invalidate();
         }
@@ -703,12 +709,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             @Override
             public void onAnimationEnd(Animation animation) {
                 // Change FAB color and icon
-                Log.i("PLAY", "play is "+mBound);
-                int p = position==0?0:position-1;
+                Log.i("PLAY", "play is " + mBound);
+                int p = position == 0 ? 0 : position - 1;
                 int pos = position;
-                if(mBound&&(position==1))
+                if (mBound && (position == 1))
                     pos = PAUSE;
-                setFloatingActionButtonColors(fab, colorIntArray[position],colorIntArray2[p], iconIntArray[pos]);
+                setFloatingActionButtonColors(fab, colorIntArray[position], colorIntArray2[p], iconIntArray[pos]);
                 toolbar.setBackgroundColor(getResources().getColor(colorIntArray2[position]));
                 tab.setBackgroundColor(getResources().getColor(colorIntArray2[position]));
 
@@ -762,21 +768,21 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
         stopService(service);
-        if(mSensorManager!=null) {
+        if (mSensorManager != null) {
             mSensorManager.unregisterListener(sensorEventListener);
         }
 
     }
+
     // This function sending to GCM server list of contacts from phonebook and getting all registered friends,
     // adding them to list of contacts
-    public void sendToServer(final int src, final ArrayList<String> phoneList, final ArrayList<String> names){
-        String serverAddr = Helper.SERVER_ADDR+"/contacts";
+    public void sendToServer(final int src, final ArrayList<String> phoneList, final ArrayList<String> names) {
+        String serverAddr = Helper.SERVER_ADDR + "/contacts";
         context = this;
         RequestQueue queue = Volley.newRequestQueue(getBaseContext());
         ArrayList<String> list = new ArrayList<String>();
 
-        for (String i: phoneList)
-        {
+        for (String i : phoneList) {
             list.add(helper.encode(i));
         }
         JSONArray arr = new JSONArray(list);
@@ -784,9 +790,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         JSONObject jsonBody = new JSONObject();
         try { //Got the list of friends, need to add them to contacts list
             jsonBody.put("contacts", arr);
-        }
-        catch (JSONException e)
-        {
+        } catch (JSONException e) {
             Log.i(TAG, "json error" + e.getMessage());
         }
         Log.i(TAG, "in find contact after building json " + jsonBody);
@@ -795,22 +799,21 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         dialog = new ProgressDialog(this);
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
-        if(src == 1) {
+        if (src == 1) {
             dialog.show();
         }
         JsonObjectRequest request = new JsonObjectRequest(
                 Request.Method.POST,
                 serverAddr,
                 jsonBody,
-                new Response.Listener<JSONObject>()
-                {
+                new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
                         try {
                             dialog.cancel();
                             JSONArray result = response.getJSONArray("response");
                             Log.i(TAG, "response is: " + result);
-                            for(int i=0; i<result.length();i++) {
+                            for (int i = 0; i < result.length(); i++) {
                                 String phone = result.get(i).toString().replace("\n", "").trim();
                                 for (int j = 0; j < phoneList.size(); j++) {
                                     if (phone.equals(helper.encode(phoneList.get(j)).trim())) {
@@ -819,26 +822,22 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                 }
                             }
                             //If user asked to add specific user, and he is not registered, ask if he want to invite him
-                            if(result.length()== 0 && src == 1)
-                            {
+                            if (result.length() == 0 && src == 1) {
                                 inviteFriend();
-                            }                         }
-                        catch (JSONException e)
-                        {
-                            Log.i(TAG,"Error on response " +  e.getMessage());
+                            }
+                        } catch (JSONException e) {
+                            Log.i(TAG, "Error on response " + e.getMessage());
                         }
                         getContacts();
                     }
                 },
-                new Response.ErrorListener(){
+                new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         dialog.cancel();
-                        try{
+                        try {
                             Log.i(TAG, error.toString());
-                        }
-                        catch (NullPointerException e)
-                        {
+                        } catch (NullPointerException e) {
                             Log.i(TAG, "Volley Error");
                         }
 
@@ -854,9 +853,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         request.setTag("REQUEST");
         queue.add(request);
     }
+
     //Function to invite friend to APP by SMS
-    public void inviteFriend()
-    {
+    public void inviteFriend() {
         Toast.makeText(context, "contact won't be added", Toast.LENGTH_LONG).show();
         new AlertDialog.Builder(context)
                 .setMessage("Sorry, your friend is not registered to our APP. Would you like to invite him?")
@@ -901,8 +900,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
                     Cursor pCur = cr.query(
                             ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?", new String[]{id}, null);
-                    if(pCur.moveToNext())
-                    {
+                    if (pCur.moveToNext()) {
                         phone = pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
                         phone = phone.replace(" ", "");
                         phone = phone.replace("-", "");
@@ -1047,6 +1045,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         public void onResume() {
             super.onResume();
         }
+
         //Function to update contacts list after adding to DB in fragment class
         private void updateList() {
             cursorListView = (ListView) rootView.findViewById(R.id.cursorListView);
@@ -1072,7 +1071,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             return false;
         }
     }
-
 
 
 }

@@ -14,10 +14,12 @@
     <string name="title_activity_second">SecondActivity</string>
     <string name="large_text">Large Text</string>
     <string name="title_activity_main_screen">MainScreenActivity</string>
-    <string name="section_format">Hello World from section: %1$d</string>
     <string name="welcomeString">Welcome to \"Person to Person\"!</string>
     <string name="enterPhoneString">Please enter your phone number and your name:</string>
     <string name="requestSentString">Request sent to</string>
     <string name="requestSentBodyString">Your request is now sent to your friend. Please wait patiently for the response. You will be notified about the decision</string>
     <string name="distanceString">Distance</string>
+    <string name="bt_disabled">BlueTooh isn\'t helping much now... :(</string>
+    <string name="bt_started">Using BlueTooth</string>
+    <string name="section_format">section_format</string>
 </resources>
