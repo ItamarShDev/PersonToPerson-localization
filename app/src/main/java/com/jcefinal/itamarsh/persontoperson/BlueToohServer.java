@@ -23,7 +23,7 @@ public class BlueToohServer extends Thread {
         memory = c.getSharedPreferences("bluetooth", c.MODE_PRIVATE);
         // Use a temporary object that is later assigned to mmServerSocket,
         // because mmServerSocket is final
-        Log.i("MY_UUID", MY_UUID.toString());
+        Log.d(Helper.BT_TAG, "In Server with " + MY_UUID.toString());
         Helper.sendMessage(c, "message", memory.getString("to", ""), "UUID " + MY_UUID.toString());
         BluetoothServerSocket tmp = null;
 
@@ -36,17 +36,19 @@ public class BlueToohServer extends Thread {
     }
 
     public void run() {
+        Log.d(Helper.BT_TAG, "server in run()");
         BluetoothSocket socket = null;
         // Keep listening until exception occurs or a socket is returned
         while (true) {
             try {
+                Log.d(Helper.BT_TAG, "Server in accept");
                 socket = mmServerSocket.accept();
             } catch (IOException e) {
                 break;
             }
             // If a connection was accepted
             if (socket != null) {
-                Log.d("BLUETOOTH", "Got Socket Request");
+                Log.d(Helper.BT_TAG, "Server Got Socket Request");
                 //TODO Do work to manage the connection (in a separate thread)
 //                    manageConnectedSocket(socket);
                 try {

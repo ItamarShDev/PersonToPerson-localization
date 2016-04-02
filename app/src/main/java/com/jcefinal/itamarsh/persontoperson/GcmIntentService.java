@@ -76,7 +76,7 @@ public class GcmIntentService extends IntentService {
 
     //function to activate the Bluetooth receiver
     private void btMessage(String data) {
-        Log.d("myDebug", "in btMessage " + data);
+        Log.d(Helper.BT_TAG, "GcmIntentService in btMessage " + data);
         Intent intent = new Intent("bluetooth");
         intent.putExtra("info", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);

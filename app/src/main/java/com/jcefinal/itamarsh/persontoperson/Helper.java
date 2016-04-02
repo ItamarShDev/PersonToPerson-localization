@@ -19,6 +19,7 @@ public class Helper {
     public static final String STOP_SEARCH = "Search Stopped";
     public static final int MY_SOCKET_TIMEOUT_MS = 10000;
     public static final String SERVER_ADDR = "http://p2p-gcm-server2.appspot.com/";
+    public static final String BT_TAG = "BLUETOOTH";
     private static final String TAG = "myDebug";
 
     //This function call to send message intent service with arguments that was sent to function

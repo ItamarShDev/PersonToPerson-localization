@@ -92,32 +92,34 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     /* BR for Bluetooth*/
     private final BroadcastReceiver mBTReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
+            Log.d(Helper.BT_TAG, "Receiver On Receive");
             String message = intent.getStringExtra("info").split("UUID")[1];
             UUID uuid = UUID.fromString(message);
+            Log.d(Helper.BT_TAG, "Receiver got uuid " + message);
             Toast.makeText(context, "UUID Got: " + message, Toast.LENGTH_LONG).show();
             String action = intent.getAction();
             // When discovery finds a device
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                Toast.makeText(context, "bt - action found", Toast.LENGTH_LONG).show();
+                Log.d(Helper.BT_TAG, "Receiver found " + action);
+
                 // Get the BluetoothDevice object from the Intent
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // Add the name and address to an array adapter to show in a ListView
                 mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
                 for (ParcelUuid u : device.getUuids()) {
+                    Log.d(Helper.BT_TAG, "Receiver found looking on uuid " + u.toString());
                     if (u.getUuid().compareTo(uuid) == 0) {
+                        Log.d(Helper.BT_TAG, "Receiver found device with uuid " + u.toString());
                         ConnectThread ct = new ConnectThread(device, uuid);
                         ct.run();
                     }
                 }
-                Log.d("BLUETOOTH", mArrayAdapter.toString());
+                Log.d(Helper.BT_TAG, mArrayAdapter.toString());
                 int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
                 Toast.makeText(getApplicationContext(), "  RSSI: " + rssi + "dBm", Toast.LENGTH_SHORT).show();
             }
         }
     };
-    /**************************************************************************************************/
-
-
     private BroadcastReceiver mReceiver;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
@@ -212,6 +214,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         }
     };
+    /**************************************************************************************************/
+
     //BR for DIALOGS
     private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
         @Override
@@ -481,7 +485,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private void blueTooth() {
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
-            Log.i("BlueTooth", "no bt");
+            Log.i(Helper.BT_TAG, "no bt");
             // Device does not support Bluetooth
         } else {
             //if bluetooth is on
@@ -497,7 +501,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     startActivityForResult(discoverableIntent, BT_SHOW);
                 }
                 String type = memory.getString("bt_status", "");
-                Log.d("BLUETOOTH", "found " + type);
+                Log.d(Helper.BT_TAG, "found " + type);
                 if (type.equals("client")) {
                     // Register the BroadcastReceiver
                     IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
@@ -523,13 +527,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     e.printStackTrace();
                 }
                 int i = 0;
-                Log.d("BT_UUID", "Num of UUIDs: " + uuids.length);
+                Log.d(Helper.BT_TAG, "Num of UUIDs: " + uuids.length);
                 for (ParcelUuid uuid : uuids) {
-                    Log.d("BT_UUID", "[" + i + "] UUID: " + uuid.getUuid().toString());
+                    Log.d(Helper.BT_TAG, "[" + i + "] UUID: " + uuid.getUuid().toString());
                     i++;
                 }
             } else { //if bluetooth is off
-                Log.i("BlueTooth", "disabled");
+                Log.i(Helper.BT_TAG, "disabled");
                 mBluetoothAdapter.enable();
             }
         }
