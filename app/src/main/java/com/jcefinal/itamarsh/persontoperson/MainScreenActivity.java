@@ -1032,13 +1032,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
                 cursorAdapter = new SimpleCursorAdapter(context, R.layout.contact, cursor, entries, viewsID, 0);
                 cursorListView.setAdapter(cursorAdapter);
-                Log.e("myDebug", "on create view = 1");
                 return rootView;
 
             }
             if (getArguments().getInt(ARG_SECTION_NUMBER) == 2) {
                 rootView = inflater.inflate(R.layout.fragment_search, container, false);
-                Log.e("myDebug", "on create view = 2");
                 return rootView;
             } else {
                 rootView = inflater.inflate(R.layout.fragment_contacts, container, false);

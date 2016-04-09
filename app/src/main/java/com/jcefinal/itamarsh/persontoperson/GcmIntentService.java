@@ -51,7 +51,7 @@ public class GcmIntentService extends IntentService {
                 String m = extras.getString("message", "empty");
                 Log.i("Bundle", "Got message\nMessage: " + m);
                 if (m.compareTo("registered") == 0) {
-                    Log.i("mydebug", "Registration to GCM server completed successfully");
+                    Log.i(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
                 } else {
                     try {
                         JSONObject js = new JSONObject(m);

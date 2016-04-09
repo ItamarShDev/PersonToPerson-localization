@@ -19,14 +19,15 @@ public class Helper {
     public static final String STOP_SEARCH = "Search Stopped";
     public static final int MY_SOCKET_TIMEOUT_MS = 10000;
     public static final String SERVER_ADDR = "http://p2p-gcm-server2.appspot.com/";
-    public static final String BT_TAG = "BLUETOOTH";
+    public static final String BT_TAG = "BlueTooth-Debug";
     public static final int BT_DISTANCE = 150, WIFI_DISTANCE = 30;
-    private static final String TAG = "myDebug";
+    public static final String CONNECTION_TAG = "myDebug";
+
 
     //This function call to send message intent service with arguments that was sent to function
     public static void sendMessage(Context context, String op, String to, String content) {
         Intent msgIntent = new Intent(context, SendMessageIntentService.class);
-        Log.i(TAG, "in sendMessage, " +
+        Log.i(CONNECTION_TAG, "in sendMessage, " +
                 "content " + content +
                 " op " + op +
                 " to " + to);

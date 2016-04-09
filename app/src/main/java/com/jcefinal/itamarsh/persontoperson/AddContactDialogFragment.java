@@ -20,10 +20,10 @@ import android.widget.Toast;
  */
 public class AddContactDialogFragment extends DialogFragment {
 
+    private final String MobilePattern = "[0-9]{10}";
     private DAL dal;
     private DialogInterface.OnDismissListener onDismissListener;
     private Helper helper = new Helper();
-    private final static String TAG = "mydebug";
     private Context context;
     private EditText mName, mPhone;
     private ProgressDialog dialog;
@@ -31,7 +31,6 @@ public class AddContactDialogFragment extends DialogFragment {
     private View v;
     private SharedPreferences.Editor edit;
     private SharedPreferences memory;
-    private final String MobilePattern = "[0-9]{10}";
 
     public void setOnDismissListener(DialogInterface.OnDismissListener onDismissListener) {
         this.onDismissListener = onDismissListener;

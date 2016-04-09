@@ -27,7 +27,6 @@ import java.io.IOException;
  * Created by olesya on 28-Jan-16.
  */
 public class SendMessageIntentService extends IntentService {
-    private static final String TAG = "mydebug";
     private static final String SENDER_ID = "186698592995";
     private SharedPreferences memory;
     private GoogleCloudMessaging gcm;
@@ -55,11 +54,10 @@ public class SendMessageIntentService extends IntentService {
         String content = intent.getStringExtra("content");
 
 
-        Log.i(TAG,"to: " + to);
-        Log.i(TAG, "op " + op);
-        Log.i(TAG, "content" + content);
+        Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - to: " + to);
+        Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - op " + op);
+        Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - content" + content);
         context = getApplicationContext();
-        Log.d(TAG, "Running  sendmessage");
         String authorizedEntity = SENDER_ID; // Project id from Google Developer Console
         token = "";
 
@@ -71,7 +69,7 @@ public class SendMessageIntentService extends IntentService {
             token = InstanceID.getInstance(context).getToken(authorizedEntity, scope);
 
         } catch (IOException ex) {
-            Log.d(TAG, "Failed to complete token refresh", ex);
+            Log.d(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Failed to complete token refresh", ex);
             ex.printStackTrace();
         }
         prepareOperation(op, to, content);
@@ -91,11 +89,11 @@ public class SendMessageIntentService extends IntentService {
                     public void onResponse(JSONObject response) {
                         try {
                             String res = response.getString("response");
-                            Log.i(TAG, "response is: " + res);
+                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - response is: " + res);
                         }
                         catch (JSONException e)
                         {
-                            Log.i(TAG,"Error on response " +  e.getMessage());
+                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Error on response " + e.getMessage());
                         }
                     }
                 },
@@ -105,13 +103,13 @@ public class SendMessageIntentService extends IntentService {
                         Toast.makeText(context, "Got error", Toast.LENGTH_LONG).show();
                         try{
 
-                            Log.i(TAG, error.toString());
-                            Log.i(TAG, error.getLocalizedMessage());
+                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.toString());
+                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.getLocalizedMessage());
 
                         }
                         catch (NullPointerException e)
                         {
-                            Log.i(TAG, "Volley Error");
+                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Volley Error");
                         }
 
                     }
@@ -141,9 +139,8 @@ public class SendMessageIntentService extends IntentService {
         }
         catch (JSONException e)
         {
-            Log.i(TAG, "json error" + e.getMessage());
+            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
         }
-        Log.i(TAG, "after building json " + jsonBody);
         sendToServer(op, jsonBody);
     }
 
@@ -163,10 +160,8 @@ public class SendMessageIntentService extends IntentService {
         }
         catch (JSONException e)
         {
-            Log.i(TAG, "json error" + e.getMessage());
+            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
         }
-        Log.i(TAG, "after building json " + jsonBody);
-        Log.i(TAG, "GCM Registration Token: " + token);
         sendToServer(op, jsonBody);
     }
 
@@ -180,9 +175,8 @@ public class SendMessageIntentService extends IntentService {
         }
         catch (JSONException e)
         {
-            Log.i(TAG, "json error" + e.getMessage());
+            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
         }
-        Log.i(TAG, "in find contact after building json " + jsonBody);
         sendToServer(op, jsonBody);
     }
 
@@ -193,7 +187,6 @@ public class SendMessageIntentService extends IntentService {
                 registerToServer();
                 break;
             case "message":
-                Log.i(TAG, "send message");
                 sendMessage(to, message);
                 break;
             case "contact":
