@@ -144,6 +144,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         }
     };
+    private BluetoothAdapter mBluetoothAdapter;
+    private WifiManager wifi;
     private Location currentLocation, target;
     private Context context;
     private Helper helper;
@@ -265,6 +267,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         context = this;
         helper = new Helper();
         sensorEventListener = this;
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
@@ -332,6 +337,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
                     setSearchStatus(false, 0);
                     receiving = false;
+                    if (mBluetoothAdapter.isEnabled()) {
+                        mBluetoothAdapter.disable();
+                    }
+                    if (wifi.isWifiEnabled())
+                        wifi.setWifiEnabled(false);
+
                     Toast.makeText(this, "Search stopped", Toast.LENGTH_SHORT).show();
                 } catch (SecurityException e) {
                     Log.e("LOCATION", e.toString());
@@ -460,9 +471,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     }
 
     private void wifi() {
-        WifiManager wifi;
         Log.i("ALGO", "WiFi Range");
-        wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         info = wifi.getConnectionInfo();
         String address = info.getMacAddress();
         Log.d("WiFi Addredd", address);
@@ -502,7 +511,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     }
 
     private void blueTooth() {
-        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
             Log.d(Helper.BT_TAG, "no bt");
             // Device does not support Bluetooth
