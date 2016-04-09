@@ -432,9 +432,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     }
 
     private void distanceAlgo(float distance) {
-        if (distance < 15) {
+        if (distance < Helper.BT_DISTANCE) {
             blueTooth();
-        } else if (distance < 30) {
+        } else if (distance < Helper.WIFI_DISTANCE) {
 //            wifi();
         }
 
