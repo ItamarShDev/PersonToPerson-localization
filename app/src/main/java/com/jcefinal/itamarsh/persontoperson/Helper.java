@@ -32,7 +32,6 @@ public class Helper {
             MESSAGE_RECEIVER = "my-event",
             SHOW_DIALOG = "show-dialog";
 
-
     //This function call to send message intent service with arguments that was sent to function
     public static void sendMessage(Context context, String op, String to, String content) {
         Intent msgIntent = new Intent(context, SendMessageIntentService.class);

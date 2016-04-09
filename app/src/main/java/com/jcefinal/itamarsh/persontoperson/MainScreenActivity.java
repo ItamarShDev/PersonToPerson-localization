@@ -304,13 +304,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         int tabToOpen = i.getIntExtra("loc", -1);
         if (tabToOpen != -1) { //If was opened from Notification, extra will be given
             NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
-            nm.cancel(0); //Cancel all notifications TODO create unique closing for each notifications
             if (action.equals(Helper.MODE_APPROVE)) { // make sure action is approve
                 m = (TextView) findViewById(R.id.textView);
                 mViewPager.setCurrentItem(1);
                 setSearchStatus(true, 1);
                 setMessage(1);
                 if (tabToOpen == 1) {//when approving request
+                    nm.cancel(0);
                     String to = i.getStringExtra("to");
                     SharedPreferences.Editor edit = memory.edit();
                     edit.putString("to", to);
@@ -319,6 +319,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     edit.apply();
                     Helper.sendMessage(getApplicationContext(), "message", to, Helper.APPROVED);
                 } else if (tabToOpen == 2) {
+                    nm.cancel(1);
                     receiving = true;
                     SharedPreferences.Editor edit = memory.edit();
                     edit.putString("bt_status", "client");
@@ -328,6 +329,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 startService(service);
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
             } else if (action.equals(Helper.MODE_STOP)) {
+                nm.cancel(2);
                 try {
                     stopService(service);
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);

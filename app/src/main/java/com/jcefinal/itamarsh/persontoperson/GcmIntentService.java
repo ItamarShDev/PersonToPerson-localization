@@ -136,7 +136,7 @@ public class GcmIntentService extends IntentService {
                     stackBuilder.addParentStack(MainScreenActivity.class);
                     stackBuilder.addNextIntent(approve);
                     PendingIntent approvePendingIntent =
-                            stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
+                            stackBuilder.getPendingIntent(0, PendingIntent.FLAG_CANCEL_CURRENT);
 
                     builder.addAction(0, Helper.MODE_APPROVE, approvePendingIntent);
 
@@ -196,7 +196,7 @@ public class GcmIntentService extends IntentService {
                     stackBuilder.addParentStack(MainScreenActivity.class);
                     stackBuilder.addNextIntent(approve);
                     PendingIntent approvePendingIntent =
-                            stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
+                            stackBuilder.getPendingIntent(2, PendingIntent.FLAG_CANCEL_CURRENT);
                     builder.setContentIntent(approvePendingIntent);
                     NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
                     nm.notify(1, builder.build());
