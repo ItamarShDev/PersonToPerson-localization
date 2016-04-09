@@ -54,9 +54,6 @@ public class SendMessageIntentService extends IntentService {
         String content = intent.getStringExtra("content");
 
 
-        Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - to: " + to);
-        Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - op " + op);
-        Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - content" + content);
         context = getApplicationContext();
         String authorizedEntity = SENDER_ID; // Project id from Google Developer Console
         token = "";
@@ -89,7 +86,6 @@ public class SendMessageIntentService extends IntentService {
                     public void onResponse(JSONObject response) {
                         try {
                             String res = response.getString("response");
-                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - response is: " + res);
                         }
                         catch (JSONException e)
                         {
@@ -103,13 +99,13 @@ public class SendMessageIntentService extends IntentService {
                         Toast.makeText(context, "Got error", Toast.LENGTH_LONG).show();
                         try{
 
-                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.toString());
-                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.getLocalizedMessage());
+                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.toString());
+                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.getLocalizedMessage());
 
                         }
                         catch (NullPointerException e)
                         {
-                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Volley Error");
+                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Volley Error");
                         }
 
                     }
@@ -119,7 +115,6 @@ public class SendMessageIntentService extends IntentService {
                 Helper.MY_SOCKET_TIMEOUT_MS,
                 DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-        request.setTag("REQUEST");
         request.setTag("REQUEST");
         queue.add(request);
     }
@@ -139,7 +134,7 @@ public class SendMessageIntentService extends IntentService {
         }
         catch (JSONException e)
         {
-            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
+            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
         }
         sendToServer(op, jsonBody);
     }
@@ -175,7 +170,7 @@ public class SendMessageIntentService extends IntentService {
         }
         catch (JSONException e)
         {
-            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
+            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
         }
         sendToServer(op, jsonBody);
     }

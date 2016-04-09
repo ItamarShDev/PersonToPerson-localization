@@ -20,11 +20,11 @@ public class BlueToohServer extends Thread {
     private SharedPreferences memory;
 
     public BlueToohServer(Context c) {
-        memory = c.getSharedPreferences("bluetooth", c.MODE_PRIVATE);
+        memory = c.getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
         // Use a temporary object that is later assigned to mmServerSocket,
         // because mmServerSocket is final
-        Log.d(Helper.BT_TAG, "In Server with " + MY_UUID.toString());
-        Helper.sendMessage(c, "message", memory.getString("to", ""), "UUID " + MY_UUID.toString());
+        Log.d(Helper.BT_TAG, "In Server with " + MY_UUID);
+        Helper.sendMessage(c, "message", memory.getString("to", ""), "UUID " + MY_UUID);
         BluetoothServerSocket tmp = null;
 
         try {
@@ -46,6 +46,7 @@ public class BlueToohServer extends Thread {
             } catch (IOException e) {
                 break;
             }
+            Log.i(Helper.BT_TAG, "accepted " + socket.isConnected());
             // If a connection was accepted
             if (socket != null) {
                 Log.d(Helper.BT_TAG, "Server Got Socket Request");

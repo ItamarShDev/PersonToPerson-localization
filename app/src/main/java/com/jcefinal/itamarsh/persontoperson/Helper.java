@@ -13,21 +13,30 @@ import java.security.NoSuchAlgorithmException;
  * This class have global functions that can be used in all other classes
  */
 public class Helper {
-    public static final String REQUEST = "I Want to Search For You";
-    public static final String REFUSE = "Sorry friend. I'm hiding from you ;)";
-    public static final String APPROVED = "Approved the search ";
-    public static final String STOP_SEARCH = "Search Stopped";
+    public static final String REQUEST = "I Want to Search For You",
+            APPROVED = "Approved the search ",
+            REFUSE = "Sorry friend. I'm hiding from you ;)",
+            STOP_SEARCH = "Search Stopped",
+            SEARCH_STOPPED = "The Search Has Been Stopped by the User";
     public static final int MY_SOCKET_TIMEOUT_MS = 10000;
     public static final String SERVER_ADDR = "http://p2p-gcm-server2.appspot.com/";
-    public static final String BT_TAG = "BlueTooth-Debug";
     public static final int BT_DISTANCE = 150, WIFI_DISTANCE = 30;
-    public static final String CONNECTION_TAG = "myDebug";
+    public static final String CONNECTION_TAG = "myDebug",
+            LOCATION_TAG = "GPS-Debug",
+            BT_TAG = "BlueTooth-Debug";
+    public static final String BT_DATA = "bluetooth",
+            REGISTER = "register",
+            MODE_APPROVE = "approve",
+            MODE_REFUSE = "refuse",
+            MODE_STOP = "stop_search",
+            MESSAGE_RECEIVER = "my-event",
+            SHOW_DIALOG = "show-dialog";
 
 
     //This function call to send message intent service with arguments that was sent to function
     public static void sendMessage(Context context, String op, String to, String content) {
         Intent msgIntent = new Intent(context, SendMessageIntentService.class);
-        Log.i(CONNECTION_TAG, "in sendMessage, " +
+        Log.d(CONNECTION_TAG, "Helper.sendMessage, " +
                 "content " + content +
                 " op " + op +
                 " to " + to);

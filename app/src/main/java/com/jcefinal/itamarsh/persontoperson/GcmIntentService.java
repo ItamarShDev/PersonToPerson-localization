@@ -49,7 +49,7 @@ public class GcmIntentService extends IntentService {
             if (GoogleCloudMessaging.MESSAGE_TYPE_MESSAGE.equals(messageType)) {
                 Logger.getLogger("GCM_RECEIVED").log(Level.INFO, extras.toString());
                 String m = extras.getString("message", "empty");
-                Log.i("Bundle", "Got message\nMessage: " + m);
+                Log.i(Helper.CONNECTION_TAG, "Got message\nMessage: " + m);
                 if (m.compareTo("registered") == 0) {
                     Log.i(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
                 } else {
@@ -77,13 +77,13 @@ public class GcmIntentService extends IntentService {
     //function to activate the Bluetooth receiver
     private void btMessage(String data) {
         Log.d(Helper.BT_TAG, "GcmIntentService in btMessage " + data);
-        Intent intent = new Intent("bluetooth");
+        Intent intent = new Intent(Helper.BT_DATA);
         intent.putExtra("info", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
     //Function send broadcast to main activity, to treat location message
     private void sendMessage(String data) {
-        Intent intent = new Intent("my-event");
+        Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
         intent.putExtra("message", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -126,11 +126,11 @@ public class GcmIntentService extends IntentService {
                 builder.setContentText(from + ": " + m);
                 builder.setAutoCancel(true);
                 TaskStackBuilder stackBuilder = TaskStackBuilder.create(getBaseContext());
-                if (m.equals(Helper.REQUEST)) {
+                if (m.equals(Helper.REQUEST)) { //got request
                     //set click listener on approve button
                     Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
                     approve.putExtra("loc", 1);
-                    approve.setAction("approve");
+                    approve.setAction(Helper.MODE_APPROVE);
                     approve.putExtra("to", fromPhone);
 
                     stackBuilder.addParentStack(MainScreenActivity.class);
@@ -138,11 +138,11 @@ public class GcmIntentService extends IntentService {
                     PendingIntent approvePendingIntent =
                             stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
 
-                    builder.addAction(0, "approve", approvePendingIntent);
+                    builder.addAction(0, Helper.MODE_APPROVE, approvePendingIntent);
 
                     //set click listener on refuse button
                     Intent refuse = new Intent(getBaseContext(), SendMessageIntentService.class);
-                    refuse.setAction("refuse");
+                    refuse.setAction(Helper.MODE_REFUSE);
                     refuse.putExtra("operation", "message");
                     refuse.putExtra("to", fromPhone);
                     refuse.putExtra("content", Helper.REFUSE);
@@ -152,16 +152,17 @@ public class GcmIntentService extends IntentService {
                             PendingIntent.getService(getBaseContext(), 2, refuse, PendingIntent.FLAG_CANCEL_CURRENT);
                     builder.setPriority(Notification.PRIORITY_HIGH);
 
-                    builder.addAction(0, "refuse", refusePendingIntent);
+                    builder.addAction(0, Helper.MODE_REFUSE, refusePendingIntent);
                     NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
                     nm.notify(0, builder.build());
 
-                } else if (m.equals(Helper.APPROVED)) {
+                } else if (m.equals(Helper.APPROVED)) { //got approved
                     memory.edit().putString("bt_status", "client").apply();
+                    Log.d(Helper.BT_TAG, "Got Approved, Client Mode");
                     //set click listener on notification
                     Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
                     approve.putExtra("loc", 2);
-                    approve.setAction("approve");
+                    approve.setAction(Helper.MODE_APPROVE);
 
                     stackBuilder.addParentStack(MainScreenActivity.class);
                     stackBuilder.addNextIntent(approve);
@@ -187,11 +188,11 @@ public class GcmIntentService extends IntentService {
                             new NotificationCompat.InboxStyle();
                     inboxStyle.setBigContentTitle("Search Stopped");
                     inboxStyle.addLine("From: " + from);
-                    inboxStyle.addLine("The Search Has Been Stopped by the User");
+                    inboxStyle.addLine(Helper.SEARCH_STOPPED);
                     builder.setStyle(inboxStyle);
                     Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
                     approve.putExtra("loc", 3);
-                    approve.setAction("stop_search");
+                    approve.setAction(Helper.MODE_STOP);
                     stackBuilder.addParentStack(MainScreenActivity.class);
                     stackBuilder.addNextIntent(approve);
                     PendingIntent approvePendingIntent =

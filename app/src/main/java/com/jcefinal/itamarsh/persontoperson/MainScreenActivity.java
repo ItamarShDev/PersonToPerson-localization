@@ -77,7 +77,6 @@ import java.util.UUID;
 public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
     /*Define variables */
 
-    private static final String BT_DATA = "bluetooth", MODE_APPROVE = "approve", MODE_STOP = "stop_search", MESSAGE_RECEIVER = "my-event", SHOW_DIALOG = "show-dialog";
     private static final int RED = 2, BLUE = 0, PINK = 1, PLAY = 1, ADD = 0, PAUSE = 2;
     private final static int WIFI_ON = 1, GPS_ON = 2, BT_ON = 3, BT_SHOW = 4;
     private static final String TAG = "myDebug";
@@ -89,37 +88,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     boolean play;
     boolean gpsOn, networkOn;
     private ArrayList<String> mArrayAdapter;
-    /* BR for Bluetooth*/
-    private final BroadcastReceiver mBTReceiver = new BroadcastReceiver() {
-        public void onReceive(Context context, Intent intent) {
-            Log.d(Helper.BT_TAG, "Receiver On Receive");
-            String message = intent.getStringExtra("info").split("UUID")[1];
-            UUID uuid = UUID.fromString(message);
-            Log.d(Helper.BT_TAG, "Receiver got uuid " + message);
-            Toast.makeText(context, "UUID Got: " + message, Toast.LENGTH_LONG).show();
-            String action = intent.getAction();
-            // When discovery finds a device
-            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                Log.d(Helper.BT_TAG, "Receiver found " + action);
 
-                // Get the BluetoothDevice object from the Intent
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                // Add the name and address to an array adapter to show in a ListView
-                mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
-                for (ParcelUuid u : device.getUuids()) {
-                    Log.d(Helper.BT_TAG, "Receiver found looking on uuid " + u.toString());
-                    if (u.getUuid().compareTo(uuid) == 0) {
-                        Log.d(Helper.BT_TAG, "Receiver found device with uuid " + u.toString());
-                        ConnectThread ct = new ConnectThread(device, uuid);
-                        ct.run();
-                    }
-                }
-                Log.d(Helper.BT_TAG, mArrayAdapter.toString());
-                int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
-                Toast.makeText(getApplicationContext(), "  RSSI: " + rssi + "dBm", Toast.LENGTH_SHORT).show();
-            }
-        }
-    };
     private BroadcastReceiver mReceiver;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
@@ -138,6 +107,43 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private Sensor mOrientation;
     private float azimuth = 0; // degree
     private SharedPreferences memory;
+    /* BR for Bluetooth*/
+    private final BroadcastReceiver mBTReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            Log.d(Helper.BT_TAG, "Receiver On Receive");
+
+            String action = intent.getAction();
+            // When discovery finds a device
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                Log.d(Helper.BT_TAG, "Receiver found " + action);
+                // Get the BluetoothDevice object from the Intent
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                // Add the name and address to an array adapter to show in a ListView
+                Log.d(Helper.BT_TAG, device.getName() + "\n" + device.getAddress());
+                Log.d(Helper.BT_TAG, "memory.getString(\"BT-UUID\")= " + memory.getString("BT-UUID", ""));
+                if (!memory.getString("BT-UUID", "").equals("")) {
+                    try {
+                        UUID uuid = UUID.fromString(memory.getString("BT-UUID", "").toString());
+                        for (ParcelUuid u : device.getUuids()) {
+                            Log.d(Helper.BT_TAG, "Receiver found looking on uuid " + u.toString());
+                            if (u.getUuid().compareTo(uuid) == 0) {
+                                Log.d(Helper.BT_TAG, "Receiver found device with uuid " + u.toString());
+                                ConnectThread ct = new ConnectThread(device, uuid);
+                                ct.run();
+                            }
+                        }
+                    } catch (IllegalArgumentException e) {
+                        Log.e(Helper.BT_TAG, e.getMessage());
+                    }
+
+                    int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
+                    TextView btPower = (TextView) findViewById(R.id.textView3);
+                    btPower.setText("  RSSI: " + rssi + "dBm");
+//                    Toast.makeText(getApplicationContext(), "  RSSI: " + rssi + "dBm", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    };
     private Location currentLocation, target;
     private Context context;
     private Helper helper;
@@ -189,29 +195,40 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
                 flag = false;
             }
+            SharedPreferences.Editor edit = memory.edit();
             // Extract data included in the Intent
             String message = intent.getStringExtra("message");
-            Log.d("receiver", "Got message: " + message);
-            float d = 0;
-            if (locationService.getLastLocation() != null) {// If current location set
-                String location[] = message.split(",");
-                String loc = "\nYour Location: \n" + String.format("%.2f", currentLocation.getLongitude()) + ","
-                        + String.format("%.2f", currentLocation.getLatitude());
-                target.setLongitude(Float.valueOf(location[0]));
-                target.setLatitude(Float.valueOf(location[1]));
-                float l1 = Float.valueOf(location[0]);
-                float l2 = Float.valueOf(location[1]);
-                d = currentLocation.distanceTo(target);
-                Log.i("DISTANCE", "" + d);
-                distanceAlgo(d);
-                //Update friend's location
-                String dtLoc = "Friend Location: " + String.format("%.2f", l1) + ',' + String.format("%.2f", l2) + "\nDistance: " +
-                        String.format("%.2f", d);
-                TextView locationText = (TextView) findViewById(R.id.distanceText);
-                locationText.setText(dtLoc);
-                TextView m = (TextView) findViewById(R.id.textView);
-                m.setText(loc);
+            String btMessage = intent.getStringExtra("info");
+            if (btMessage != null) {
+                btMessage = btMessage.split("UUID")[1];
+                edit.putString("BT-UUID", btMessage).apply();
+                Log.d(Helper.BT_TAG, "Receiver got uuid " + btMessage);
+                Toast.makeText(context, "UUID Got: " + btMessage, Toast.LENGTH_LONG).show();
+
+            } else if (message != null) {
+
+                float d = 0;
+                if (locationService.getLastLocation() != null) {// If current location set
+                    String location[] = message.split(",");
+                    String loc = "\nYour Location: \n" + String.format("%.2f", currentLocation.getLongitude()) + ","
+                            + String.format("%.2f", currentLocation.getLatitude());
+                    target.setLongitude(Float.valueOf(location[0]));
+                    target.setLatitude(Float.valueOf(location[1]));
+                    float l1 = Float.valueOf(location[0]);
+                    float l2 = Float.valueOf(location[1]);
+                    d = currentLocation.distanceTo(target);
+                    Log.i(Helper.CONNECTION_TAG, "DISTANCE" + d);
+                    distanceAlgo(d);
+                    //Update friend's location
+                    String dtLoc = "Friend Location: " + String.format("%.2f", l1) + ',' + String.format("%.2f", l2) + "\nDistance: " +
+                            String.format("%.2f", d);
+                    TextView locationText = (TextView) findViewById(R.id.distanceText);
+                    locationText.setText(dtLoc);
+                    TextView m = (TextView) findViewById(R.id.textView);
+                    m.setText(loc);
+                }
             }
+
         }
     };
     /**************************************************************************************************/
@@ -272,11 +289,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 @Override
                 public void onDismiss(DialogInterface dialog) {
                     //register with number and name that user gave
-                    Helper.sendMessage(getBaseContext(), "register", null, null);
+                    Helper.sendMessage(getBaseContext(), Helper.REGISTER, null, null);
                 }
             });
         } else {
-            Helper.sendMessage(getBaseContext(), "register", null, null); //register with number and name that saved in SP
+            Helper.sendMessage(getBaseContext(), Helper.REGISTER, null, null); //register with number and name that saved in SP
         }
 
         /***************************************************
@@ -287,8 +304,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         int tabToOpen = i.getIntExtra("loc", -1);
         if (tabToOpen != -1) { //If was opened from Notification, extra will be given
             NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
-            nm.cancel(0); //Cancel all notifications
-            if (action.equals(MODE_APPROVE)) { // make sure action is approve
+            nm.cancel(0); //Cancel all notifications TODO create unique closing for each notifications
+            if (action.equals(Helper.MODE_APPROVE)) { // make sure action is approve
                 m = (TextView) findViewById(R.id.textView);
                 mViewPager.setCurrentItem(1);
                 setSearchStatus(true, 1);
@@ -303,11 +320,14 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     Helper.sendMessage(getApplicationContext(), "message", to, Helper.APPROVED);
                 } else if (tabToOpen == 2) {
                     receiving = true;
-                    //Register broadcast receiver
+                    SharedPreferences.Editor edit = memory.edit();
+                    edit.putString("bt_status", "client");
+                    edit.apply();
+                    Log.d(Helper.BT_TAG, "Starting Client Mode");
                 }
                 startService(service);
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
-            } else if (action.equals(MODE_STOP)) {
+            } else if (action.equals(Helper.MODE_STOP)) {
                 try {
                     stopService(service);
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
@@ -446,16 +466,16 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         info = wifi.getConnectionInfo();
         String address = info.getMacAddress();
-        Log.i("WiFi Addredd", address);
+        Log.d("WiFi Addredd", address);
         if (!wifi.isWifiEnabled()) {
-            Log.i("ALGO", "WiFi Off");
+            Log.d("ALGO", "WiFi Off");
         } else {
-            Log.i("ALGO", "WiFi On");
+            Log.d("ALGO", "WiFi On");
 
             mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
-                    Log.i("P2P", "discoverPeers SUCCESS");
+                    Log.d("P2P", "discoverPeers SUCCESS");
                     if (mManager != null) {
                         Log.i("P2P", "Searching Peers");
                         mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
@@ -476,7 +496,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
                 @Override
                 public void onFailure(int reasonCode) {
-                    Log.i("P2P", "discoverPeers Failure");
+                    Log.d("P2P", "discoverPeers Failure");
                 }
             });
         }
@@ -485,7 +505,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     private void blueTooth() {
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
-            Log.i(Helper.BT_TAG, "no bt");
+            Log.d(Helper.BT_TAG, "no bt");
             // Device does not support Bluetooth
         } else {
             //if bluetooth is on
@@ -506,10 +526,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     // Register the BroadcastReceiver
                     IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
                     registerReceiver(mBTReceiver, filter); // Don't forget to unregister during onDestroy
+                    mBluetoothAdapter.startDiscovery();
+                    Log.d(Helper.BT_TAG, "Client Mode");
 
                 } else if (type.equals("server")) {
                     BlueToohServer bs = new BlueToohServer(getBaseContext());
-                    bs.run();
+//                    bs.run();
                 }
                 Method getUuidsMethod = null;
                 try {
@@ -526,14 +548,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 } catch (InvocationTargetException e) {
                     e.printStackTrace();
                 }
-                int i = 0;
-                Log.d(Helper.BT_TAG, "Num of UUIDs: " + uuids.length);
-                for (ParcelUuid uuid : uuids) {
-                    Log.d(Helper.BT_TAG, "[" + i + "] UUID: " + uuid.getUuid().toString());
-                    i++;
-                }
+//                int i = 0;
+//                for (ParcelUuid uuid : uuids) {
+////                    Log.d(Helper.BT_TAG, "[" + i + "] UUID: " + uuid.getUuid().toString());
+//                    i++;
+//                }
             } else { //if bluetooth is off
-                Log.i(Helper.BT_TAG, "disabled");
+                Log.d(Helper.BT_TAG, "disabled");
                 mBluetoothAdapter.enable();
             }
         }
@@ -544,11 +565,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         super.onResume();
         // Need to register again all broadcast receivers
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
-                new IntentFilter(MESSAGE_RECEIVER));
+                new IntentFilter(Helper.MESSAGE_RECEIVER));
         LocalBroadcastManager.getInstance(this).registerReceiver(mDialogShow,
-                new IntentFilter(SHOW_DIALOG));
-        LocalBroadcastManager.getInstance(this).registerReceiver(mBTReceiver,
-                new IntentFilter(BT_DATA));
+                new IntentFilter(Helper.SHOW_DIALOG));
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
+                new IntentFilter(Helper.BT_DATA));
+        Log.i("APP", "Registered On");
         if (mSensorManager != null)
             mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
     }
@@ -811,7 +833,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         } catch (JSONException e) {
             Log.e(TAG, "json error" + e.getMessage());
         }
-        Log.i(TAG, "in find contact after building json " + jsonBody);
 
 
         dialog = new ProgressDialog(this);
@@ -830,7 +851,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                         try {
                             dialog.cancel();
                             JSONArray result = response.getJSONArray("response");
-                            Log.i(TAG, "response is: " + result);
+                            Log.d(TAG, "response is: " + result);
                             for (int i = 0; i < result.length(); i++) {
                                 String phone = result.get(i).toString().replace("\n", "").trim();
                                 for (int j = 0; j < phoneList.size(); j++) {
@@ -885,7 +906,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                             smsManager.sendTextMessage(memory.getString("to", ""), null, "Hi, I would like to invite you to \"Find your Friend\" application." +
                                     " Please go to this link to download it: " +
                                     "https://github.com/olesyash/Find_Your_Friends/wiki", null, null);
-                            Log.i(TAG, "sending message");
                         } catch (Exception e) {
                             Toast.makeText(getApplicationContext(), "SMS failed, please try again.", Toast.LENGTH_LONG).show();
                             e.printStackTrace();
@@ -994,6 +1014,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  final Bundle savedInstanceState) {
+
             if (getArguments().getInt(ARG_SECTION_NUMBER) == 1) {
                 rootView = inflater.inflate(R.layout.activity_contacts, container, false);
                 updateList();
@@ -1013,7 +1034,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                                                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                                                     @Override
                                                     public void onClick(DialogInterface dialog, int which) {
-
+                                                        SharedPreferences memory = context.getSharedPreferences("currentLoc", MODE_PRIVATE);
+                                                        SharedPreferences.Editor edit = memory.edit();
+                                                        edit.putString("bt_status", "client");
+                                                        edit.apply();
+                                                        Log.d(Helper.BT_TAG, "entering client mode");
                                                     }
                                                 })
                                                 .show();

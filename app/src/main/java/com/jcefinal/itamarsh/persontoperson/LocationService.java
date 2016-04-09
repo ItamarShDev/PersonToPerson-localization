@@ -92,7 +92,7 @@ public class LocationService extends Service implements LocationListener {
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.i("Location Service", "Location Changed");
+        Log.i(Helper.LOCATION_TAG, "Location Changed");
         currentLocation = location;
         // Called when a new location is found by the network location provider.
         Helper.sendMessage(getBaseContext(), "message", memory.getString("to", ""), location.getLongitude() + "," + location.getLatitude());
