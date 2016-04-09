@@ -111,6 +111,8 @@ public class GcmIntentService extends IntentService {
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+                Intent service = new Intent(getApplicationContext(), LocationService.class);
+
                 //Prepare notification builder
 
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(c);
@@ -159,11 +161,14 @@ public class GcmIntentService extends IntentService {
                 } else if (m.equals(Helper.APPROVED)) { //got approved
                     memory.edit().putString("bt_status", "client").apply();
                     Log.d(Helper.BT_TAG, "Got Approved, Client Mode");
+                    startService(service);
                     //set click listener on notification
                     Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
                     approve.putExtra("loc", 2);
                     approve.setAction(Helper.MODE_APPROVE);
-
+                    SharedPreferences.Editor edit = memory.edit();
+                    edit.putString("bt_status", "client");
+                    edit.apply();
                     stackBuilder.addParentStack(MainScreenActivity.class);
                     stackBuilder.addNextIntent(approve);
                     PendingIntent approvePendingIntent =
@@ -183,6 +188,7 @@ public class GcmIntentService extends IntentService {
                     NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
                     nm.notify(1, builder.build());
                 } else if (m.equals(Helper.STOP_SEARCH)) {
+                    getApplicationContext().stopService(service);
                     //set click listener on notification
                     NotificationCompat.InboxStyle inboxStyle =
                             new NotificationCompat.InboxStyle();

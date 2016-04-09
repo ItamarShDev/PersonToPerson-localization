@@ -321,10 +321,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 } else if (tabToOpen == 2) {
                     nm.cancel(1);
                     receiving = true;
-                    SharedPreferences.Editor edit = memory.edit();
-                    edit.putString("bt_status", "client");
-                    edit.apply();
-                    Log.d(Helper.BT_TAG, "Starting Client Mode");
                 }
                 startService(service);
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
@@ -368,6 +364,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     private void stopSearch() {
         try {
+            locationService.stopLocationServices();
             setSearchStatus(false, 1);
             receiving = false;
             stopService(service);
@@ -382,7 +379,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             try {
                 LocalBroadcastManager.getInstance(this).unregisterReceiver(mBTReceiver);
             } catch (IllegalArgumentException e) {
-
+                Log.e("STOP SEARCH", e.getMessage());
             }
             if (mSensorManager != null)
                 mSensorManager.unregisterListener(sensorEventListener);
