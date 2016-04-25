@@ -21,10 +21,12 @@ public class Helper {
     public static final int MY_SOCKET_TIMEOUT_MS = 10000;
     public static final String SERVER_ADDR = "http://p2p-gcm-server2.appspot.com/";
     public static final int BT_DISTANCE = 150, WIFI_DISTANCE = 30;
+    public final static int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 10;
     public static final String CONNECTION_TAG = "myDebug",
             LOCATION_TAG = "GPS-Debug",
             BT_TAG = "BlueTooth-Debug";
     public static final String BT_DATA = "bluetooth",
+            WIFI_DATA = "wifi",
             REGISTER = "register",
             MODE_APPROVE = "approve",
             MODE_REFUSE = "refuse",

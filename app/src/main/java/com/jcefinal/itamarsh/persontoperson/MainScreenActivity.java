@@ -14,6 +14,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.hardware.Sensor;
@@ -23,10 +24,14 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pConfig;
+import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ParcelUuid;
@@ -35,7 +40,9 @@ import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
@@ -72,6 +79,7 @@ import org.json.JSONObject;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
@@ -120,7 +128,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // Add the name and address to an array adapter to show in a ListView
                 Log.d(Helper.BT_TAG, device.getName() + "\n" + device.getAddress());
-                Log.d(Helper.BT_TAG, "memory.getString(\"BT-UUID\")= " + memory.getString("BT-UUID", ""));
                 if (!memory.getString("BT-UUID", "").equals("")) {
                     try {
                         UUID uuid = UUID.fromString(memory.getString("BT-UUID", "").toString());
@@ -200,12 +207,19 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             SharedPreferences.Editor edit = memory.edit();
             // Extract data included in the Intent
             String message = intent.getStringExtra("message");
-            String btMessage = intent.getStringExtra("info");
+            String btMessage = intent.getStringExtra("bt_info");
+            String wifiMessage = intent.getStringExtra("wifi_info");
             if (btMessage != null) {
                 btMessage = btMessage.split("UUID")[1];
                 edit.putString("BT-UUID", btMessage).apply();
                 Log.d(Helper.BT_TAG, "Receiver got uuid " + btMessage);
                 Toast.makeText(context, "UUID Got: " + btMessage, Toast.LENGTH_LONG).show();
+
+            } else if (wifiMessage != null) {
+                wifiMessage = wifiMessage.split("WIFI")[1];
+                edit.putString("WIFI-UUID", wifiMessage).apply();
+                Log.d(Helper.BT_TAG, "Receiver got wifi " + wifiMessage);
+                Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
 
             } else if (message != null) {
 
@@ -269,6 +283,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         sensorEventListener = this;
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
 
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
@@ -340,8 +355,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     if (mBluetoothAdapter.isEnabled()) {
                         mBluetoothAdapter.disable();
                     }
-                    if (wifi.isWifiEnabled())
-                        wifi.setWifiEnabled(false);
+//                    if (wifi.isWifiEnabled())
+//                        wifi.setWifiEnabled(false);
 
                     Toast.makeText(this, "Search stopped", Toast.LENGTH_SHORT).show();
                 } catch (SecurityException e) {
@@ -349,7 +364,36 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 }
             }
         } else {
-            readContacts();
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
+                if (ContextCompat.checkSelfPermission(this,
+                        Manifest.permission.READ_CONTACTS)
+                        != PackageManager.PERMISSION_GRANTED) {
+
+                    // Should we show an explanation?
+                    if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                            Manifest.permission.READ_CONTACTS)) {
+
+                        // Show an expanation to the user *asynchronously* -- don't block
+                        // this thread waiting for the user's response! After the user
+                        // sees the explanation, try again to request the permission.
+
+                    } else {
+
+                        // No explanation needed, we can request the permission.
+
+                        ActivityCompat.requestPermissions(this,
+                                new String[]{Manifest.permission.READ_CONTACTS},
+                                Helper.MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+
+                        // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+                        // app-defined int constant. The callback method gets the
+                        // result of the request.
+                    }
+                } else {
+                    readContacts();
+                }
+            } else
+                readContacts();
         }
 
         //********************* Tab Listener  ******************************
@@ -462,52 +506,99 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     }
 
     private void distanceAlgo(float distance) {
-        if (distance < Helper.BT_DISTANCE) {
+       /* if (distance < Helper.BT_DISTANCE) {
             blueTooth();
-        } else if (distance < Helper.WIFI_DISTANCE) {
-//            wifi();
+        } else*/
+        if (distance < Helper.WIFI_DISTANCE) {
+            wifi();
         }
 
     }
 
     private void wifi() {
-        Log.i("ALGO", "WiFi Range");
-        info = wifi.getConnectionInfo();
-        String address = info.getMacAddress();
-        Log.d("WiFi Addredd", address);
+        mChannel = mManager.initialize(this, getMainLooper(), null);
+        String type = memory.getString("bt_status", "");
+
         if (!wifi.isWifiEnabled()) {
             Log.d("ALGO", "WiFi Off");
         } else {
-            Log.d("ALGO", "WiFi On");
+            if (type.equals("server")) {
+                info = wifi.getConnectionInfo();
+                String address = info.getMacAddress();
+                Log.d("WiFi Address", address);
+                Helper.sendMessage(this, "message", memory.getString("to", ""), "WIFI " + address);
 
-            mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
-                @Override
-                public void onSuccess() {
-                    Log.d("P2P", "discoverPeers SUCCESS");
-                    if (mManager != null) {
-                        Log.i("P2P", "Searching Peers");
-                        mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
+            } else {
 
-                            @Override
-                            public void onPeersAvailable(WifiP2pDeviceList peers) {
-                                Log.d("P2P", String.format("PeerListListener: %d peers available, updating device list", peers.getDeviceList().size()));
-                                Toast.makeText(getApplicationContext(),
-                                        String.format("PeerListListener: %d peers available, updating device list",
-                                                peers.getDeviceList().size()), Toast.LENGTH_SHORT).show();
-                                // DO WHATEVER YOU WANT HERE
-                                // YOU CAN GET ACCESS TO ALL THE DEVICES YOU FOUND FROM peers OBJECT
 
+                mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        if (mManager != null) {
+                            String addr = memory.getString("WIFI-UUID", "");
+                            Log.d("WIFI", "Addr " + addr);
+                            if (!addr.equals("")) {
+                                List<ScanResult> resultList = wifi.getScanResults();
+                                Log.i("WIFI", resultList.toString());
+                                for (ScanResult a : resultList) {
+                                    Log.d("WIFI", "found " + a.SSID);
+                                    if (a.SSID.equals(addr)) {
+                                        Log.d("WIFI", "match " + a.SSID);
+                                        Toast.makeText(context, "Wifi RSSI " + a.level, Toast.LENGTH_LONG).show();
+                                    }
+                                }
                             }
-                        });
-                    }
-                }
+                            mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
 
-                @Override
-                public void onFailure(int reasonCode) {
-                    Log.d("P2P", "discoverPeers Failure");
-                }
-            });
+                                @Override
+                                public void onPeersAvailable(WifiP2pDeviceList peers) {
+                                    Log.d("P2P", String.format("PeerListListener: %d peers available, updating device list", peers.getDeviceList().size()));
+//                                    Toast.makeText(getApplicationContext(),
+//                                            String.format("PeerListListener: %d peers available, updating device list",
+//                                                    peers.getDeviceList().size()), Toast.LENGTH_SHORT).show();
+                                    String addr = memory.getString("WIFI-UUID", "");
+
+                                    if (!addr.equals("")) {
+                                        for (WifiP2pDevice device : peers.getDeviceList()) {
+                                            WifiP2pConfig config = new WifiP2pConfig();
+                                            config.deviceAddress = device.deviceAddress;
+                                            Log.d("WIFI_P2P", "found " + config.deviceAddress);
+                                            if (config.deviceAddress.equals(addr)) {
+                                                Log.d("WIFI_P2P", "match " + config.deviceAddress);
+
+                                                mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
+
+                                                    @Override
+                                                    public void onSuccess() {
+                                                        //success logic
+                                                    }
+
+                                                    @Override
+                                                    public void onFailure(int reason) {
+                                                        //failure logic
+                                                    }
+                                                });
+                                            }
+
+                                        }
+                                    }
+
+                                    // DO WHATEVER YOU WANT HERE
+                                    // YOU CAN GET ACCESS TO ALL THE DEVICES YOU FOUND FROM peers OBJECT
+
+                                }
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(int reasonCode) {
+                        Log.d("P2P", "discoverPeers Failure");
+                    }
+                });
+            }
         }
+
     }
 
     private void blueTooth() {
@@ -534,11 +625,10 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
                     registerReceiver(mBTReceiver, filter); // Don't forget to unregister during onDestroy
                     mBluetoothAdapter.startDiscovery();
-                    Log.d(Helper.BT_TAG, "Client Mode");
 
                 } else if (type.equals("server")) {
                     BlueToohServer bs = new BlueToohServer(getBaseContext());
-//                    bs.run();
+
                 }
                 Method getUuidsMethod = null;
                 try {
@@ -577,6 +667,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 new IntentFilter(Helper.SHOW_DIALOG));
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter(Helper.BT_DATA));
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
+                new IntentFilter(Helper.WIFI_DATA));
         Log.i("APP", "Registered On");
         if (mSensorManager != null)
             mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);

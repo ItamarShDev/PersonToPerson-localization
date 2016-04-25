@@ -3,7 +3,6 @@ package com.jcefinal.itamarsh.persontoperson;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
@@ -55,33 +54,69 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
+        WifiP2pManager.PeerListListener myPeerListListener;
+        if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
 
+            // request available peers from the wifi p2p manager. This is an
+            // asynchronous call and the calling activity is notified with a
+            // callback on PeerListListener.onPeersAvailable()
+            if (mManager != null) {
+                Log.i("WIFI", "requesting peers");
+                mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
+
+                    @Override
+                    public void onPeersAvailable(WifiP2pDeviceList peers) {
+                        Log.d("P2P", String.format("PeerListListener: %d peers available, updating device list", peers.getDeviceList().size()));
+                        Log.i("WIFI",
+                                String.format("PeerListListener: %d peers available, updating device list",
+                                        peers.getDeviceList().size()));
+                        for (WifiP2pDevice device : peers.getDeviceList()) {
+                            WifiP2pConfig config = new WifiP2pConfig();
+                            config.deviceAddress = device.deviceAddress;
+                            mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
+
+                                @Override
+                                public void onSuccess() {
+                                    //success logic
+                                }
+
+                                @Override
+                                public void onFailure(int reason) {
+                                    //failure logic
+                                }
+                            });
+                        }
+                        // DO WHATEVER YOU WANT HERE
+                        // YOU CAN GET ACCESS TO ALL THE DEVICES YOU FOUND FROM peers OBJECT
+
+                    }
+                });
+            }
+
+        }
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
             int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
-                WifiP2pDevice device = (WifiP2pDevice) peerList.get(0);
-
-                WifiP2pConfig config = new WifiP2pConfig();
-                config.deviceAddress = device.deviceAddress;
-                config.wps.setup = WpsInfo.PBC;
+//                WifiP2pDevice device = (WifiP2pDevice) peerList.get(0);
+//
+//                WifiP2pConfig config = new WifiP2pConfig();
+//                config.deviceAddress = device.deviceAddress;
+//                config.wps.setup = WpsInfo.PBC;
 
                 Log.i("P2P", "P2P Enabled");
-                mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
-
-                    @Override
-                    public void onSuccess() {
-                        // Code for when the discovery initiation is successful goes here.
-                        // No services have actually been discovered yet, so this method
-                        // can often be left blank.  Code for peer discovery goes in the
-                        // onReceive method, detailed below.
-                    }
-
-                    @Override
-                    public void onFailure(int reasonCode) {
-                        // Code for when the discovery initiation fails goes here.
-                        // Alert the user that something went wrong.
-                    }
-                });
+//                mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+//
+//                    @Override
+//                    public void onSuccess() {
+//
+//                    }
+//
+//                    @Override
+//                    public void onFailure(int reasonCode) {
+//                        // Code for when the discovery initiation fails goes here.
+//                        // Alert the user that something went wrong.
+//                    }
+//                });
             } else {
                 // Wi-Fi P2P is not enabled
                 Log.i("P2P", "P2P Disabled");

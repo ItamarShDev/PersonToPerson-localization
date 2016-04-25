@@ -9,13 +9,9 @@ import android.support.v4.app.ActivityCompat;
 
 public class PermissionSettings {
 
-        private Activity mActivity;
         private final int PERMISSION_REQUEST = 0;
+    private Activity mActivity;
         private OnPermissionListener mOnPermissionListener;
-
-        public interface OnPermissionListener {
-            void OnPermissionChanged(boolean permissionGranted);
-        }
 
         public PermissionSettings(Activity activity, OnPermissionListener onPermissionListener) {
             mActivity = activity;
@@ -56,7 +52,6 @@ public class PermissionSettings {
             mOnPermissionListener = onPermissionListener;
         }
 
-
         public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
             if (requestCode == PERMISSION_REQUEST) {
                 // Request for permission.
@@ -74,6 +69,11 @@ public class PermissionSettings {
                     }
                 }
             }
+        }
+
+
+    public interface OnPermissionListener {
+        void OnPermissionChanged(boolean permissionGranted);
         }
     }
 

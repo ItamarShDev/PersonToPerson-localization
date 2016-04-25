@@ -58,6 +58,8 @@ public class GcmIntentService extends IntentService {
                         String str = js.getString("message");
                         if (str.contains(",")) {
                             sendMessage(str);
+                        } else if (str.contains("WIFI")) {
+                            wifiMessage(str);
                         } else if (str.contains("UUID")) {
                             btMessage(str);
                         } else {
@@ -74,13 +76,20 @@ public class GcmIntentService extends IntentService {
         GcmBroadcastReceiver.completeWakefulIntent(intent);
     }
 
+    private void wifiMessage(String data) {
+        Intent intent = new Intent(Helper.WIFI_DATA);
+        intent.putExtra("wifi_info", data);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
     //function to activate the Bluetooth receiver
     private void btMessage(String data) {
         Log.d(Helper.BT_TAG, "GcmIntentService in btMessage " + data);
         Intent intent = new Intent(Helper.BT_DATA);
-        intent.putExtra("info", data);
+        intent.putExtra("bt_info", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
+
     //Function send broadcast to main activity, to treat location message
     private void sendMessage(String data) {
         Intent intent = new Intent(Helper.MESSAGE_RECEIVER);

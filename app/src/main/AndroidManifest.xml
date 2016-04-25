@@ -36,9 +36,7 @@
     <permission
     android:name="com.example.gcm.permission.C2D_MESSAGE"
     android:protectionLevel="signature" />
-        android:name="com.example.gcm.permission.C2D_MESSAGE"
-        android:protectionLevel="signature" />
-
+    <permission android:name="android.permission.READ_CONTACTS" />
 
 
     <application
