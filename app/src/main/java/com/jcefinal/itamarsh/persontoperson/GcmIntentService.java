@@ -22,9 +22,6 @@ import com.google.android.gms.gcm.GoogleCloudMessaging;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 /*
  * This class responsible for treat of arriving GCM messages, using seperate thread
  */
@@ -47,9 +44,8 @@ public class GcmIntentService extends IntentService {
 
         if (extras != null && !extras.isEmpty()) {  // has effect of unparcelling Bundle
             if (GoogleCloudMessaging.MESSAGE_TYPE_MESSAGE.equals(messageType)) {
-                Logger.getLogger("GCM_RECEIVED").log(Level.INFO, extras.toString());
                 String m = extras.getString("message", "empty");
-                Log.i(Helper.CONNECTION_TAG, "Got message\nMessage: " + m);
+//                Log.i(Helper.CONNECTION_TAG, "Got message\nMessage: " + m);
                 if (m.compareTo("registered") == 0) {
                     Log.i(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
                 } else {
@@ -84,7 +80,6 @@ public class GcmIntentService extends IntentService {
 
     //function to activate the Bluetooth receiver
     private void btMessage(String data) {
-        Log.d(Helper.BT_TAG, "GcmIntentService in btMessage " + data);
         Intent intent = new Intent(Helper.BT_DATA);
         intent.putExtra("bt_info", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
@@ -169,7 +164,6 @@ public class GcmIntentService extends IntentService {
 
                 } else if (m.equals(Helper.APPROVED)) { //got approved
                     memory.edit().putString("bt_status", "client").apply();
-                    Log.d(Helper.BT_TAG, "Got Approved, Client Mode");
                     startService(service);
                     //set click listener on notification
                     Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);

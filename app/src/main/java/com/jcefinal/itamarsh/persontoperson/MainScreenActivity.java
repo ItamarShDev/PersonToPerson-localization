@@ -27,9 +27,6 @@ import android.location.LocationManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.net.wifi.p2p.WifiP2pConfig;
-import android.net.wifi.p2p.WifiP2pDevice;
-import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -216,7 +213,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 Toast.makeText(context, "UUID Got: " + btMessage, Toast.LENGTH_LONG).show();
 
             } else if (wifiMessage != null) {
-                wifiMessage = wifiMessage.split("WIFI")[1];
+                wifiMessage = wifiMessage.split("WIFI ")[1];
                 edit.putString("WIFI-UUID", wifiMessage).apply();
                 Log.d(Helper.BT_TAG, "Receiver got wifi " + wifiMessage);
                 Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
@@ -233,7 +230,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     float l1 = Float.valueOf(location[0]);
                     float l2 = Float.valueOf(location[1]);
                     d = currentLocation.distanceTo(target);
-                    Log.i(Helper.CONNECTION_TAG, "DISTANCE" + d);
                     distanceAlgo(d);
                     //Update friend's location
                     String dtLoc = "Friend Location: " + String.format("%.2f", l1) + ',' + String.format("%.2f", l2) + "\nDistance: " +
@@ -333,30 +329,31 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     nm.cancel(0);
                     String to = i.getStringExtra("to");
                     SharedPreferences.Editor edit = memory.edit();
-                    edit.putString("to", to);
-                    edit.putString("bt_status", "server");
+                    edit.putString("to", to);//save recipient
+                    edit.putString("bt_status", "server");//change bluetooth mode to server
 
                     edit.apply();
-                    Helper.sendMessage(getApplicationContext(), "message", to, Helper.APPROVED);
+                    Helper.sendMessage(getApplicationContext(), "message", to, Helper.APPROVED);//send approval message
                 } else if (tabToOpen == 2) {
                     nm.cancel(1);
                     receiving = true;
                 }
-                startService(service);
+                startService(service); //start and bind wifi service
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
-            } else if (action.equals(Helper.MODE_STOP)) {
-                nm.cancel(2);
+            } else if (action.equals(Helper.MODE_STOP)) {//if stop mode
+                nm.cancel(2);//delete notification
+                ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
                 try {
-                    stopService(service);
+                    stopService(service); //stop wifi service
+                    //unregister receivers
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
+                    //disable search mode
                     setSearchStatus(false, 0);
                     receiving = false;
-                    if (mBluetoothAdapter.isEnabled()) {
+                    if (mBluetoothAdapter.isEnabled()) { //if bt enabled, close it
                         mBluetoothAdapter.disable();
                     }
-//                    if (wifi.isWifiEnabled())
-//                        wifi.setWifiEnabled(false);
 
                     Toast.makeText(this, "Search stopped", Toast.LENGTH_SHORT).show();
                 } catch (SecurityException e) {
@@ -364,7 +361,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 }
             }
         } else {
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) { //android 5+ permission handling
                 if (ContextCompat.checkSelfPermission(this,
                         Manifest.permission.READ_CONTACTS)
                         != PackageManager.PERMISSION_GRANTED) {
@@ -373,7 +370,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                             Manifest.permission.READ_CONTACTS)) {
 
-                        // Show an expanation to the user *asynchronously* -- don't block
+                        // Show an explanation to the user *asynchronously* -- don't block
                         // this thread waiting for the user's response! After the user
                         // sees the explanation, try again to request the permission.
 
@@ -396,7 +393,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 readContacts();
         }
 
-        //********************* Tab Listener  ******************************
+        //********************* Tabs Listener  ******************************
         tab.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -417,33 +414,44 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     }
 
+    /**
+     * stopping the search mode
+     */
     private void stopSearch() {
+
         try {
-            locationService.stopLocationServices();
-            setSearchStatus(false, 1);
+            locationService.stopLocationServices();//stop location
+            setSearchStatus(false, 1);//disable search
             receiving = false;
-            stopService(service);
+            stopService(service);//stop wifi
             mBound = false;
             m = (TextView) findViewById(R.id.textView);
+            //change texts
             m.setText("Stopped Search");
             TextView locationText = (TextView) findViewById(R.id.distanceText);
             locationText.setText("");
-            Helper.sendMessage(this, "message", memory.getString("to", ""), Helper.STOP_SEARCH);
+            Helper.sendMessage(this, "message", memory.getString("to", ""), Helper.STOP_SEARCH);//send stop message
+            if (mBluetoothAdapter.isEnabled()) { //if bt enabled, close it
+                mBluetoothAdapter.disable();
+            }
+            //disable receivers
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
+            ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
+            wifi.setWifiEnabled(true);
             try {
-                LocalBroadcastManager.getInstance(this).unregisterReceiver(mBTReceiver);
+                LocalBroadcastManager.getInstance(this).unregisterReceiver(mBTReceiver);//clse bt receiver
             } catch (IllegalArgumentException e) {
                 Log.e("STOP SEARCH", e.getMessage());
             }
             if (mSensorManager != null)
-                mSensorManager.unregisterListener(sensorEventListener);
+                mSensorManager.unregisterListener(sensorEventListener);//unregister the arrow listener
         } catch (SecurityException s) {
             Log.e(TAG, "Security exception");
         }
     }
 
-    //        Set colors and the icon of fab depends on search status
+    //Set colors and the icon of fab depends on search status
     private void setSearchStatus(boolean status, int tab) {
         if (tab == 0) {
             setFloatingActionButtonColors(fab, colorIntArray[BLUE], colorIntArray[PINK], iconIntArray[ADD]);
@@ -481,6 +489,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     }
 
+    /**
+     * catch and handle results from popups
+     *
+     * @param requestCode = the opened popup
+     * @param resultCode  = the result of the action
+     * @param data        = extended data and info
+     */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == GPS_ON) {
@@ -505,6 +520,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     }
 
+
+    /**
+     * enable mode depending on distance
+     *
+     * @param distance = the measured distance
+     */
     private void distanceAlgo(float distance) {
        /* if (distance < Helper.BT_DISTANCE) {
             blueTooth();
@@ -515,87 +536,50 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     }
 
+    private void scan() {
+        wifi.startScan();
+        List<ScanResult> scan = wifi.getScanResults();
+        Log.d(Helper.WIFI_TAG, "results num " + scan.size());
+    }
+
     private void wifi() {
         mChannel = mManager.initialize(this, getMainLooper(), null);
         String type = memory.getString("bt_status", "");
 
         if (!wifi.isWifiEnabled()) {
-            Log.d("ALGO", "WiFi Off");
-        } else {
+            if (!ApManager.isApOn(MainScreenActivity.this))
+                wifi.setWifiEnabled(true);
+        } else if (!ApManager.isApOn(MainScreenActivity.this)) {
             if (type.equals("server")) {
-                info = wifi.getConnectionInfo();
-                String address = info.getMacAddress();
-                Log.d("WiFi Address", address);
-                Helper.sendMessage(this, "message", memory.getString("to", ""), "WIFI " + address);
+                if (!ApManager.isApOn(MainScreenActivity.this)) {
+                    if (Build.VERSION.SDK_INT > 22)
+                        if (!Settings.System.canWrite(getApplicationContext())) {
+                            Intent grantIntent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
+                            startActivity(grantIntent);
+                        } else {
+                            ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
+                            info = wifi.getConnectionInfo();
+                            String address = info.getBSSID();
+                            Log.d(Helper.WIFI_TAG, "WiFi Address " + address);
+                            Helper.sendMessage(this, "message", memory.getString("to", ""), "WIFI " + address);
 
+                        }
+                }
             } else {
 
-
-                mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        if (mManager != null) {
-                            String addr = memory.getString("WIFI-UUID", "");
-                            Log.d("WIFI", "Addr " + addr);
-                            if (!addr.equals("")) {
-                                List<ScanResult> resultList = wifi.getScanResults();
-                                Log.i("WIFI", resultList.toString());
-                                for (ScanResult a : resultList) {
-                                    Log.d("WIFI", "found " + a.SSID);
-                                    if (a.SSID.equals(addr)) {
-                                        Log.d("WIFI", "match " + a.SSID);
-                                        Toast.makeText(context, "Wifi RSSI " + a.level, Toast.LENGTH_LONG).show();
-                                    }
-                                }
-                            }
-                            mManager.requestPeers(mChannel, new WifiP2pManager.PeerListListener() {
-
-                                @Override
-                                public void onPeersAvailable(WifiP2pDeviceList peers) {
-                                    Log.d("P2P", String.format("PeerListListener: %d peers available, updating device list", peers.getDeviceList().size()));
-//                                    Toast.makeText(getApplicationContext(),
-//                                            String.format("PeerListListener: %d peers available, updating device list",
-//                                                    peers.getDeviceList().size()), Toast.LENGTH_SHORT).show();
-                                    String addr = memory.getString("WIFI-UUID", "");
-
-                                    if (!addr.equals("")) {
-                                        for (WifiP2pDevice device : peers.getDeviceList()) {
-                                            WifiP2pConfig config = new WifiP2pConfig();
-                                            config.deviceAddress = device.deviceAddress;
-                                            Log.d("WIFI_P2P", "found " + config.deviceAddress);
-                                            if (config.deviceAddress.equals(addr)) {
-                                                Log.d("WIFI_P2P", "match " + config.deviceAddress);
-
-                                                mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
-
-                                                    @Override
-                                                    public void onSuccess() {
-                                                        //success logic
-                                                    }
-
-                                                    @Override
-                                                    public void onFailure(int reason) {
-                                                        //failure logic
-                                                    }
-                                                });
-                                            }
-
-                                        }
-                                    }
-
-                                    // DO WHATEVER YOU WANT HERE
-                                    // YOU CAN GET ACCESS TO ALL THE DEVICES YOU FOUND FROM peers OBJECT
-
-                                }
-                            });
+                String addr = memory.getString("WIFI-UUID", "");
+                Log.d(Helper.WIFI_TAG, "Addr " + addr);
+                if (!addr.equals("")) {
+                    List<ScanResult> resultList = wifi.getScanResults();
+                    Log.i(Helper.WIFI_TAG, resultList.toString());
+                    for (ScanResult a : resultList) {
+                        Log.d(Helper.WIFI_TAG, "found " + a.BSSID);
+                        if (a.BSSID.equals(addr)) {
+                            Log.d(Helper.WIFI_TAG, "match " + a.SSID);
+                            Toast.makeText(context, "Wifi RSSI " + a.level, Toast.LENGTH_LONG).show();
                         }
                     }
-
-                    @Override
-                    public void onFailure(int reasonCode) {
-                        Log.d("P2P", "discoverPeers Failure");
-                    }
-                });
+                }
             }
         }
 
@@ -645,11 +629,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 } catch (InvocationTargetException e) {
                     e.printStackTrace();
                 }
-//                int i = 0;
-//                for (ParcelUuid uuid : uuids) {
-////                    Log.d(Helper.BT_TAG, "[" + i + "] UUID: " + uuid.getUuid().toString());
-//                    i++;
-//                }
             } else { //if bluetooth is off
                 Log.d(Helper.BT_TAG, "disabled");
                 mBluetoothAdapter.enable();
@@ -676,17 +655,17 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     @Override
     protected void onPause() {
-//         Unregister since the activity is not visible
+        super.onPause();
+        //Unregister since the activity is not visible
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
         flag = true;
-        super.onPause();
     }
 
     // Alert message asking for user to enable GPS
     public void buildAlertMessageNoGps(final int type) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        String posType = type == GPS_ON ? "GPS" : "WiFi";
+        String posType = type == GPS_ON ? "GPS" : Helper.WIFI_TAG;
         final String cancel = type == GPS_ON ? "Cancel Search" : "No Thanks";
         builder.setMessage("Your " + posType + " seems to be disabled, do you want to enable it?")
                 .setCancelable(false)
@@ -1079,7 +1058,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     /**
      * A placeholder fragment containing a simple view.
      */
-    //the activities themselves
+//the activities themselves
     public static class PlaceholderFragment extends Fragment implements View.OnClickListener, View.OnLongClickListener {
         private static final String ARG_SECTION_NUMBER = "section_number";
         /**

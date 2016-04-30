@@ -9,7 +9,7 @@ android {
     defaultConfig {
         applicationId "com.jcefinal.itamarsh.persontoperson"
         minSdkVersion 17
-        targetSdkVersion 23
+        targetSdkVersion 21
         versionCode 1
         versionName "1.0"
         multiDexEnabled true

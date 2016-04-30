@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.jcefinal.itamarsh.persontoperson">
 
+    <uses-sdk android:minSdkVersion="14" />
+
     <!-- READ FROM PHONE -->
     <uses-permission android:name="android.permission.READ_PROFILE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -25,6 +27,8 @@
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
     <!-- SMS -->
     <uses-permission android:name="android.permission.SEND_SMS" />
+
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <!--
        To retrieve OAuth 2.0 tokens or invalidate tokens to disconnect a user. This disconnect
        option is required to comply with the Google+ Sign-In developer policies
@@ -77,10 +81,6 @@
             </intent-filter>
         </receiver>
         <!-- WIFI DIRECT -->
-        <receiver
-            android:name=".WiFiDirectBroadcastReceiver"
-            android:enabled="true"
-            android:exported="true" />
 
         <!-- SERVICES -->
         <service android:name=".GcmIntentService" />
