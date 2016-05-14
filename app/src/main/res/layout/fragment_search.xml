@@ -1,37 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
     <TextView
-        android:gravity="center"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="BT disabled"
         android:id="@+id/textView3"
-        android:layout_gravity="center_horizontal" />
-
-    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
         android:gravity="center"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Your Location"
-        android:id="@+id/textView"
-        android:layout_gravity="center_horizontal" />
+        android:text="BT disabled" />
 
     <TextView
-        android:gravity="center|bottom"
+        android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minLines="2"
-        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center"
+        android:text="Your Location"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
         android:id="@+id/distanceText"
-        android:text="@string/distanceString"/>
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center|bottom"
+        android:minLines="2"
+        android:text="@string/distanceString"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <TextView
+        android:id="@+id/wifiTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <com.jcefinal.itamarsh.persontoperson.CompassView
+        android:id="@+id/myView"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:id="@+id/myView"
         android:layout_gravity="center_horizontal" />
 </LinearLayout>
