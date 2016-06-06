@@ -12,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
  * This class have global functions that can be used in all other classes
  */
 public class Helper {
+    public static final String SENDER_ID = "186698592995";
     public static final String REQUEST = "I Want to Search For You",
             APPROVED = "Approved the search ",
             REFUSE = "Sorry friend. I'm hiding from you ;)",

@@ -49,9 +49,12 @@ public class GcmIntentService extends IntentService {
                 if (m.compareTo("registered") == 0) {
                     Log.i(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
                 } else {
+
                     try {
                         JSONObject js = new JSONObject(m);
                         String str = js.getString("message");
+                        String session = js.getString("session");
+                        edit.putString("session", session).apply();
                         if (str.contains(",")) {
                             sendMessage(str);
                         } else if (str.contains("WIFI")) {
@@ -85,6 +88,12 @@ public class GcmIntentService extends IntentService {
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
+    //Function send broadcast to main activity, to treat location message
+    private void distanceMessage(String data) {
+        Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
+        intent.putExtra("distance", data);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
     //Function send broadcast to main activity, to treat location message
     private void sendMessage(String data) {
         Intent intent = new Intent(Helper.MESSAGE_RECEIVER);

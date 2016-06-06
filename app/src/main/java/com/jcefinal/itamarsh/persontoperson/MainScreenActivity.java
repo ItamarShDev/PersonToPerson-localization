@@ -82,7 +82,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
+public class MainScreenActivity extends AppCompatActivity
+        implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
     /*Define variables */
 
     private static final int RED = 2, BLUE = 0, PINK = 1, PLAY = 1, ADD = 0, PAUSE = 2;
@@ -344,6 +345,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 startService(service); //start and bind wifi service
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
             } else if (action.equals(Helper.MODE_STOP)) {//if stop mode
+                String session = memory.getString("session", "");
+                Helper.sendMessage(this, "end", "", session);
                 nm.cancel(2);//delete notification
                 ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
                 try {
@@ -423,6 +426,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
      * stopping the search mode
      */
     private void stopSearch() {
+        String session = memory.getString("session", "");
+        Helper.sendMessage(this, "end", "", session);
         memory.edit().putString("WIFI-UUID", "").apply();
         try {
             locationService.stopLocationServices();//stop location
@@ -532,89 +537,18 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
      * @param distance = the measured distance
      */
     private void distanceAlgo(float distance) {
-//        if (distance < Helper.BT_DISTANCE) {
-//            blueTooth();
-//        } else if (distance < Helper.WIFI_DISTANCE) {
+
         if (!wifiOn) {
             wifi();
             wifiOn = true;
         }
-//        } else {
-//            wifiOn = false;
-//        }
-
-    }
-
-    private void wifi() {
-        mChannel = mManager.initialize(this, getMainLooper(), null);
-        String type = memory.getString("bt_status", "");
-        TextView tv = (TextView) findViewById(R.id.textView3);
-        if (!wifi.isWifiEnabled()) {
-//            if (!ApManager.isApOn(MainScreenActivity.this))
-//                wifi.setWifiEnabled(true);
-        } else if (!ApManager.isApOn(MainScreenActivity.this)) {
-            if (type.equals("server")) {
-                tv.setText("Server Mode");
-                if (!ApManager.isApOn(MainScreenActivity.this)) {
-                    if (Build.VERSION.SDK_INT > 22)
-                        if (!Settings.System.canWrite(getApplicationContext())) {
-                            Log.d(Helper.WIFI_TAG, "Server Mode - need permissions");
-                            Intent grantIntent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
-                            startActivity(grantIntent);
-                        } else {
-                            String address = ApManager.changeAPStateAndReturnSSID(MainScreenActivity.this); // change Ap state :boolean
-                            if (address.compareTo("Failed") != 0) {
-                                Log.d(Helper.WIFI_TAG, "WiFi Address " + address);
-                                Helper.sendMessage(this, "message", memory.getString("to", ""), "WIFI " + address);
-                            }
-                        }
-                }
-            } else { //client mode
-                tv.setText("Client Mode");
-                ScheduledExecutorService scheduler =
-                        Executors.newSingleThreadScheduledExecutor();
-                scheduler.scheduleAtFixedRate
-                        (new Runnable() {
-                            public void run() {
-                                String addr = memory.getString("WIFI-UUID", "");
-                                if (!addr.equals("")) {
-                                    Log.d(Helper.WIFI_TAG, "Got Address " + addr);
-                                    List<ScanResult> resultList = wifi.getScanResults();
-                                    for (ScanResult a : resultList) {
-                                        Log.d(Helper.WIFI_TAG, "Looking for: " + addr + " found " + a.BSSID);
-                                        if (a.BSSID.equals(addr)) {
-                                            Log.d(Helper.WIFI_TAG, "match " + a.BSSID);
-                                            //scheduled task to run wifi
-                                            TextView tv1 = (TextView) findViewById(R.id.wifiTextView);
-                                            double d = calculateDistance(a.level, a.frequency);
-                                            Log.d(Helper.WIFI_TAG, "Connected to: " + a.SSID + "\nWifi distance " + d);
-                                            String dString = "Approx Wifi Distance: " + d + " meters";
-                                            tv1.setText(dString);
-                                        }
-
-                                    }
-                                }
-                            }
-
-                        }, 0, 5, TimeUnit.SECONDS);
-            }
+        if (distance < Helper.BT_DISTANCE) {
+            blueToothAndWifi(distance);
         }
 
     }
 
-    /**
-     * method to calculate approx distance
-     *
-     * @param signalLevelInDb - the RSSI
-     * @param freqInMHz       - the web frequency
-     * @return - approx distance
-     */
-    public double calculateDistance(double signalLevelInDb, double freqInMHz) {
-        double exp = (27.55 - (20 * Math.log10(freqInMHz)) + Math.abs(signalLevelInDb)) / 20.0;
-        return Math.pow(10.0, exp);
-    }
-
-    private void blueTooth() {
+    private void blueToothAndWifi(float distance) {
         if (mBluetoothAdapter == null) {
             Log.d(Helper.BT_TAG, "no bt");
             // Device does not support Bluetooth
@@ -664,6 +598,95 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
         }
     }
+
+    /**
+     * function to calculate wifi distance between two devices
+     * using public Wifi routers
+     */
+    private void wifi() {
+
+        mChannel = mManager.initialize(this, getMainLooper(), null);
+        String type = memory.getString("bt_status", "");
+        TextView tv = (TextView) findViewById(R.id.textView3);
+        if (wifi.isWifiEnabled())
+            if (!ApManager.isApOn(MainScreenActivity.this)) {
+                if (type.equals("server")) {
+                    tv.setText("Server Mode");
+                    if (!ApManager.isApOn(MainScreenActivity.this)) {
+                        if (Build.VERSION.SDK_INT > 22)
+                            if (!Settings.System.canWrite(getApplicationContext())) {
+                                Log.d(Helper.WIFI_TAG, "Server Mode - need permissions");
+                                Intent grantIntent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
+                                startActivity(grantIntent);
+                            } else {
+                                String address = ApManager.changeAPStateAndReturnSSID(MainScreenActivity.this); // change Ap state :boolean
+                                if (address.compareTo("Failed") != 0) {
+                                    Log.d(Helper.WIFI_TAG, "WiFi Address " + address);
+                                    Helper.sendMessage(this, "message", memory.getString("to", ""), "WIFI " + address);
+                                }
+                            }
+                    }
+                } else { //client mode
+                    tv.setText("Client Mode");
+                    ScheduledExecutorService scheduler =
+                            Executors.newSingleThreadScheduledExecutor();
+                    scheduler.scheduleAtFixedRate
+                            (new Runnable() {
+                                public void run() {
+                                    String addr = memory.getString("WIFI-UUID", "");
+                                    if (!addr.equals("")) {
+                                        Log.d(Helper.WIFI_TAG, "Got Address " + addr);
+                                        List<ScanResult> resultList = wifi.getScanResults();
+                                        JSONArray json = new JSONArray();
+                                        for (ScanResult a : resultList) {
+                                            JSONObject wifi = new JSONObject();
+                                            try {
+                                                wifi.put("bssid", a.BSSID);
+                                                wifi.put("signal", a.level);
+                                                wifi.put("frequency", a.frequency);
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                                    wifi.put("channel", a.channelWidth);
+                                                }
+                                                json.put(wifi);
+                                            } catch (JSONException e) {
+                                                e.printStackTrace();
+                                            }
+
+                                            Log.d(Helper.WIFI_TAG, "Looking for: " + addr + " found " + a.BSSID);
+                                            if (a.BSSID.equals(addr)) {
+                                                Log.d(Helper.WIFI_TAG, "match " + a.BSSID);
+                                                //scheduled task to run wifi
+                                                TextView tv1 = (TextView) findViewById(R.id.wifiTextView);
+                                                double d = calculateDistance(a.level, a.frequency);
+                                                Log.d(Helper.WIFI_TAG, "Connected to: " + a.SSID + "\nWifi distance " + d);
+                                                String dString = "Approx Wifi Distance: " + d + " meters";
+                                                tv1.setText(dString);
+                                            }
+
+                                        }
+                                        Log.i(Helper.WIFI_TAG, json.toString());
+                                        Helper.sendMessage(getBaseContext(), "server", "", json.toString());
+                                    }
+                                }
+
+                            }, 0, 5, TimeUnit.SECONDS);
+                }
+            }
+
+    }
+
+    /**
+     * method to calculate approx distance
+     *
+     * @param signalLevelInDb - the RSSI
+     * @param freqInMHz       - the web frequency
+     * @return - approx distance
+     */
+    public double calculateDistance(double signalLevelInDb, double freqInMHz) {
+        double exp = (27.55 - (20 * Math.log10(freqInMHz)) + Math.abs(signalLevelInDb)) / 20.0;
+        return Math.pow(10.0, exp);
+    }
+
 
     @Override
     public void onResume() {
