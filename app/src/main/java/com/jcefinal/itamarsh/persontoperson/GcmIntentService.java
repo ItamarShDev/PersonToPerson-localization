@@ -61,6 +61,8 @@ public class GcmIntentService extends IntentService {
                             wifiMessage(str);
                         } else if (str.contains("UUID")) {
                             btMessage(str);
+                        } else if (str.contains("found_wifi")) {
+                            locationeMessage(str);
                         } else {
                             showNotification(extras.getString("message"));
                         }
@@ -89,11 +91,12 @@ public class GcmIntentService extends IntentService {
     }
 
     //Function send broadcast to main activity, to treat location message
-    private void distanceMessage(String data) {
+    private void locationeMessage(String data) {
         Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
-        intent.putExtra("distance", data);
+        intent.putExtra("location", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
+
     //Function send broadcast to main activity, to treat location message
     private void sendMessage(String data) {
         Intent intent = new Intent(Helper.MESSAGE_RECEIVER);

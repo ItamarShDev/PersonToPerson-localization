@@ -50,16 +50,14 @@ public class WifiScanner extends Thread {
                 (new Runnable() {
                     public void run() {
                         List<ScanResult> resultList = wifi.getScanResults();
-                        JSONObject jo = new JSONObject();
                         try {
                             String token = InstanceID.getInstance(context).getToken(Helper.SENDER_ID, "GCM");
-                            jo.put("from", token);
                         } catch (IOException e) {
-                            e.printStackTrace();
-                        } catch (JSONException e) {
                             e.printStackTrace();
                         }
                         JSONArray json = new JSONArray();
+                        JSONObject jo = new JSONObject();
+
                         for (ScanResult a : resultList) {
                             JSONObject wifi = new JSONObject();
                             try {
@@ -75,11 +73,10 @@ public class WifiScanner extends Thread {
                             }
                         }
                         try {
-                            jo.put("data", json);
+                            jo.put("found_wifi", json);
                             Log.i(Helper.WIFI_TAG, json.toString());
-                            String session = memory.getString("session", "");
-                            jo.put("data", session);
-                            Helper.sendMessage(context.getApplicationContext(), "wifi", "", jo.toString());
+                            Helper.sendMessage(context.getApplicationContext(), "message", "", jo.toString());
+
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -87,5 +84,6 @@ public class WifiScanner extends Thread {
                     }
 
                 }, 0, 5, TimeUnit.SECONDS);
+
     }
 }

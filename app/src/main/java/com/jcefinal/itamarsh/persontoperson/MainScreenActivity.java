@@ -68,19 +68,18 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.android.gms.iid.InstanceID;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class MainScreenActivity extends AppCompatActivity
         implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
@@ -207,6 +206,7 @@ public class MainScreenActivity extends AppCompatActivity
             }
             SharedPreferences.Editor edit = memory.edit();
             // Extract data included in the Intent
+            String locationMsg = intent.getStringExtra("location");
             String message = intent.getStringExtra("message");
             String btMessage = intent.getStringExtra("bt_info");
             String wifiMessage = intent.getStringExtra("wifi_info");
@@ -221,6 +221,60 @@ public class MainScreenActivity extends AppCompatActivity
                 edit.putString("WIFI-UUID", wifiMessage).apply();
                 Log.d(Helper.BT_TAG, "Receiver got wifi " + wifiMessage);
                 Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
+
+            } else if (locationMsg != null) {
+
+                String addr = memory.getString("WIFI-UUID", "");
+                if (!addr.equals("")) {
+                    Log.d(Helper.WIFI_TAG, "Got Address " + addr);
+                    List<ScanResult> resultList = wifi.getScanResults();
+                    JSONArray json = new JSONArray();
+                    JSONObject jo = new JSONObject();
+                    try {
+                        JSONObject tJo = new JSONObject(locationMsg);
+                        JSONArray ja = tJo.getJSONArray("found_wifi");
+                        jo.put("data2", ja);
+                        String token = InstanceID.getInstance(context).getToken(Helper.SENDER_ID, "GCM");
+                        jo.put("from", token);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    for (ScanResult a : resultList) {
+                        JSONObject wifi = new JSONObject();
+                        try {
+                            wifi.put("bssid", a.BSSID);
+                            wifi.put("signal", a.level);
+                            wifi.put("frequency", a.frequency);
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                wifi.put("channel", a.channelWidth);
+                            }
+                            json.put(wifi);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                        Log.d(Helper.WIFI_TAG, "Looking for: " + addr + " found " + a.BSSID);
+                        if (a.BSSID.equals(addr)) {
+                            Log.d(Helper.WIFI_TAG, "match " + a.BSSID);
+                            //scheduled task to run wifi
+                            TextView tv1 = (TextView) findViewById(R.id.wifiTextView);
+                            double d = calculateDistance(a.level, a.frequency);
+                            Log.d(Helper.WIFI_TAG, "Connected to: " + a.SSID + "\nWifi distance " + d);
+                            String dString = "Approx Wifi Distance: " + d + " meters";
+                            tv1.setText(dString);
+                        }
+
+                    }
+                    try {
+                        jo.put("data", json);
+                        Log.i(Helper.WIFI_TAG, json.toString());
+                        Helper.sendMessage(getBaseContext(), "server", "", jo.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
 
             } else if (message != null) {
 
@@ -549,6 +603,7 @@ public class MainScreenActivity extends AppCompatActivity
     }
 
     private void blueToothAndWifi(float distance) {
+
         if (mBluetoothAdapter == null) {
             Log.d(Helper.BT_TAG, "no bt");
             // Device does not support Bluetooth
@@ -575,7 +630,8 @@ public class MainScreenActivity extends AppCompatActivity
 
                 } else if (type.equals("server")) {
                     BlueToohServer bs = new BlueToohServer(getBaseContext());
-
+                    WifiScanner ws = new WifiScanner(getApplicationContext());
+                    ws.run();
                 }
                 Method getUuidsMethod = null;
                 try {
@@ -628,48 +684,6 @@ public class MainScreenActivity extends AppCompatActivity
                     }
                 } else { //client mode
                     tv.setText("Client Mode");
-                    ScheduledExecutorService scheduler =
-                            Executors.newSingleThreadScheduledExecutor();
-                    scheduler.scheduleAtFixedRate
-                            (new Runnable() {
-                                public void run() {
-                                    String addr = memory.getString("WIFI-UUID", "");
-                                    if (!addr.equals("")) {
-                                        Log.d(Helper.WIFI_TAG, "Got Address " + addr);
-                                        List<ScanResult> resultList = wifi.getScanResults();
-                                        JSONArray json = new JSONArray();
-                                        for (ScanResult a : resultList) {
-                                            JSONObject wifi = new JSONObject();
-                                            try {
-                                                wifi.put("bssid", a.BSSID);
-                                                wifi.put("signal", a.level);
-                                                wifi.put("frequency", a.frequency);
-                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                                    wifi.put("channel", a.channelWidth);
-                                                }
-                                                json.put(wifi);
-                                            } catch (JSONException e) {
-                                                e.printStackTrace();
-                                            }
-
-                                            Log.d(Helper.WIFI_TAG, "Looking for: " + addr + " found " + a.BSSID);
-                                            if (a.BSSID.equals(addr)) {
-                                                Log.d(Helper.WIFI_TAG, "match " + a.BSSID);
-                                                //scheduled task to run wifi
-                                                TextView tv1 = (TextView) findViewById(R.id.wifiTextView);
-                                                double d = calculateDistance(a.level, a.frequency);
-                                                Log.d(Helper.WIFI_TAG, "Connected to: " + a.SSID + "\nWifi distance " + d);
-                                                String dString = "Approx Wifi Distance: " + d + " meters";
-                                                tv1.setText(dString);
-                                            }
-
-                                        }
-                                        Log.i(Helper.WIFI_TAG, json.toString());
-                                        Helper.sendMessage(getBaseContext(), "server", "", json.toString());
-                                    }
-                                }
-
-                            }, 0, 5, TimeUnit.SECONDS);
                 }
             }
 

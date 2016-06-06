@@ -108,7 +108,6 @@ public class SendMessageIntentService extends IntentService {
         queue.add(request);
     }
 
-
     /* preparing json body for sending message to other device using GCM server  */
     public void sendMessage(String to, String message) {
         String op = "message";
@@ -181,7 +180,7 @@ public class SendMessageIntentService extends IntentService {
             case "contact":
                 findContact(to);
                 break;
-            case "wifi":
+            case "server":
                 updateServer(message);
                 break;
             case "end":
