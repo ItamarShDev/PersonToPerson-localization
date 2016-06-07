@@ -49,6 +49,7 @@ public class WifiScanner extends Thread {
         scheduler.scheduleAtFixedRate
                 (new Runnable() {
                     public void run() {
+                        Log.i(Helper.WIFI_TAG, "In WiFi Scanner");
                         List<ScanResult> resultList = wifi.getScanResults();
                         try {
                             String token = InstanceID.getInstance(context).getToken(Helper.SENDER_ID, "GCM");
@@ -74,6 +75,7 @@ public class WifiScanner extends Thread {
                         }
                         try {
                             jo.put("found_wifi", json);
+                            Log.i(Helper.WIFI_TAG, "Sending to server:");
                             Log.i(Helper.WIFI_TAG, json.toString());
                             Helper.sendMessage(context.getApplicationContext(), "message", "", jo.toString());
 

@@ -74,7 +74,7 @@ public class LocationService extends Service implements LocationListener {
         return mBinder;
     }
 
-    public Location getLastLocation(){
+    public Location getLastLocation() {
         return currentLocation;
     }
 
@@ -84,6 +84,7 @@ public class LocationService extends Service implements LocationListener {
         }
         locationManager.removeUpdates(this);
     }
+
     @Override
     public void onDestroy() {
         Log.i(TAG, "OnDestroy");
@@ -99,8 +100,10 @@ public class LocationService extends Service implements LocationListener {
     @Override
     public void onLocationChanged(Location location) {
         currentLocation = location;
+        String type = memory.getString("bt_status", "");
         // Called when a new location is found by the network location provider.
-        Helper.sendMessage(getBaseContext(), "message", memory.getString("to", ""), location.getLongitude() + "," + location.getLatitude());
+        if (type.equals("server"))
+            Helper.sendMessage(getBaseContext(), "message", memory.getString("to", ""), location.getLongitude() + "," + location.getLatitude());
 
     }
 

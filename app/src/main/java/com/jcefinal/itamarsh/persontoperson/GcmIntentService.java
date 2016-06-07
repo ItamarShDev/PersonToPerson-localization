@@ -23,7 +23,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /*
- * This class responsible for treat of arriving GCM messages, using seperate thread
+ * This class responsible for treat of arriving GCM messages, using separate thread
  */
 public class GcmIntentService extends IntentService {
     private SharedPreferences memory;
