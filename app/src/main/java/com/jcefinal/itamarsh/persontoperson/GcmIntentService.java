@@ -53,8 +53,11 @@ public class GcmIntentService extends IntentService {
                     try {
                         JSONObject js = new JSONObject(m);
                         String str = js.getString("message");
-                        String session = js.getString("session");
-                        edit.putString("session", session).apply();
+                        Log.i("MESSAGE", m);
+                        if (js.has("session")) {
+                            String session = js.getString("session");
+                            edit.putString("session", session).apply();
+                        }
                         if (str.contains(",")) {
                             sendMessage(str);
                         } else if (str.contains("WIFI")) {

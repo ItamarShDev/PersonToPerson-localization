@@ -35,6 +35,7 @@ public class WifiScanner extends Thread {
 
 
     public WifiScanner(Context c) {
+        Log.d("ALGORITHM", "in WiFi Scanner");
         wifi = (WifiManager) c.getSystemService(Context.WIFI_SERVICE);
         mManager = (WifiP2pManager) c.getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(c, c.getMainLooper(), null);
@@ -44,6 +45,7 @@ public class WifiScanner extends Thread {
     }
 
     public void run() {
+        Log.d("ALGORITHM", "RUN in WiFi Scanner");
         ScheduledExecutorService scheduler =
                 Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate

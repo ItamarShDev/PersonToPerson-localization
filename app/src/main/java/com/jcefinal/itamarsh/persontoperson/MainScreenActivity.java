@@ -223,7 +223,7 @@ public class MainScreenActivity extends AppCompatActivity
                 Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
 
             } else if (locationMsg != null) {
-
+                Log.i("ALGORITHM", "GOT Location");
                 String addr = memory.getString("WIFI-UUID", "");
                 if (!addr.equals("")) {
                     Log.d(Helper.WIFI_TAG, "Got Address " + addr);
@@ -592,12 +592,20 @@ public class MainScreenActivity extends AppCompatActivity
      */
     private void distanceAlgo(float distance) {
 
+        String type = memory.getString("bt_status", "");
+
         if (!wifiOn) {
-            wifi();
+            if (type.equals("server")) {
+                Log.d("ALGORITHM", "Activating WifiScanner");
+                WifiScanner ws = new WifiScanner(getApplicationContext());
+                ws.run();
+            }
             wifiOn = true;
         }
         if (distance < Helper.BT_DISTANCE) {
+            Log.i("ALGORITHM", "blueToothAndWifi");
             blueToothAndWifi(distance);
+            wifi();
         }
 
     }
@@ -630,8 +638,8 @@ public class MainScreenActivity extends AppCompatActivity
 
                 } else if (type.equals("server")) {
                     BlueToohServer bs = new BlueToohServer(getBaseContext());
-                    WifiScanner ws = new WifiScanner(getApplicationContext());
-                    ws.run();
+//                    WifiScanner ws = new WifiScanner(getApplicationContext());
+//                    ws.run();
                 }
                 Method getUuidsMethod = null;
                 try {
