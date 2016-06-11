@@ -24,9 +24,9 @@ public class WIfiListDBHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE " + WifiList.WifiTable.TABLE_NAME + " (" + WifiList.WifiTable._ID
-                + WifiList.WifiTable.FREQUENCY + " TEXT, "
-                + WifiList.WifiTable.SIGNAL + " TEXT, "
-                + WifiList.WifiTable.CHANNEL + " TEXT, "
+                + WifiList.WifiTable.FREQUENCY + " INTEGER, "
+                + WifiList.WifiTable.SIGNAL + " INTEGER, "
+                + WifiList.WifiTable.CHANNEL + " INTEGER, "
                 + "UNIQUE(" + WifiList.WifiTable.BSSID + ") ON CONFLICT IGNORE"
                 + ");");
     }
@@ -62,7 +62,7 @@ public class WIfiListDBHelper extends SQLiteOpenHelper {
         return c;
     }
 
-    public long addWifi(String bssid, String signal, String channel, String frequency) {
+    public long addWifi(String bssid, int signal, int channel, int frequency) {
         // Gets the data repository in write mode
         SQLiteDatabase db = this.getWritableDatabase();
 
@@ -71,15 +71,24 @@ public class WIfiListDBHelper extends SQLiteOpenHelper {
         values.put(WifiList.WifiTable.BSSID, bssid);
         values.put(WifiList.WifiTable.FREQUENCY, frequency);
         values.put(WifiList.WifiTable.SIGNAL, signal);
-        if (channel != null)
+        if (channel > -1)
             values.put(WifiList.WifiTable.CHANNEL, channel);
 
         // Insert the new row, returning the primary key value of the new row
         long newRowId;
-        newRowId = db.insert(
+        String[] selectionArgs = {String.valueOf(bssid)};
+
+        newRowId = db.update(
                 WifiList.WifiTable.TABLE_NAME,
-                null,
-                values);
+                values,
+                WifiList.WifiTable.BSSID,
+                selectionArgs);
+        if (newRowId == 0) {
+            newRowId = db.insert(
+                    WifiList.WifiTable.TABLE_NAME,
+                    null,
+                    values);
+        }
         return newRowId;
     }
 

@@ -59,6 +59,7 @@ public class WifiScanner extends Thread {
                         Log.i(Helper.WIFI_TAG, "In WiFi Scanner");
                         List<ScanResult> resultList = wifi.getScanResults();//get wifi around
                         if (!checkIfExistInDB(resultList)) {// get in only if the list isnt the same as last
+                            WIfiListDBHelper wifiDB = new WIfiListDBHelper(context);
                             try {
                                 String token = InstanceID.getInstance(context).getToken(Helper.SENDER_ID, "GCM");
                             } catch (IOException e) {
@@ -68,6 +69,7 @@ public class WifiScanner extends Thread {
                             JSONObject jo = new JSONObject();
 
                             for (ScanResult a : resultList) {
+
                                 JSONObject wifi = new JSONObject();
                                 try {
                                     wifi.put("bssid", a.BSSID);
@@ -75,6 +77,9 @@ public class WifiScanner extends Thread {
                                     wifi.put("frequency", a.frequency);
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                                         wifi.put("channel", a.channelWidth);
+                                        wifiDB.addWifi(a.BSSID, a.level, a.channelWidth, a.frequency);
+                                    } else {
+                                        wifiDB.addWifi(a.BSSID, a.level, -1, a.frequency);
                                     }
                                     json.put(wifi);
                                 } catch (JSONException e) {
