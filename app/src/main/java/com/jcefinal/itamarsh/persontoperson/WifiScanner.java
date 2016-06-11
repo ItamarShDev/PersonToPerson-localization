@@ -2,6 +2,7 @@ package com.jcefinal.itamarsh.persontoperson;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pManager;
@@ -16,9 +17,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -32,7 +36,8 @@ public class WifiScanner extends Thread {
     private Context context;
     private SharedPreferences memory;
     private SharedPreferences.Editor edit;
-
+    private ScheduledExecutorService scheduler;
+    private ScheduledFuture<?> result;
 
     public WifiScanner(Context c) {
         Log.d("ALGORITHM", "in WiFi Scanner");
@@ -46,48 +51,80 @@ public class WifiScanner extends Thread {
 
     public void run() {
         Log.d("ALGORITHM", "RUN in WiFi Scanner");
-        ScheduledExecutorService scheduler =
+        scheduler =
                 Executors.newSingleThreadScheduledExecutor();
-        scheduler.scheduleAtFixedRate
-                (new Runnable() {
+        result = scheduler.scheduleAtFixedRate
+                (new Runnable() {//run every 15 seconds
                     public void run() {
                         Log.i(Helper.WIFI_TAG, "In WiFi Scanner");
-                        List<ScanResult> resultList = wifi.getScanResults();
-                        try {
-                            String token = InstanceID.getInstance(context).getToken(Helper.SENDER_ID, "GCM");
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        JSONArray json = new JSONArray();
-                        JSONObject jo = new JSONObject();
-
-                        for (ScanResult a : resultList) {
-                            JSONObject wifi = new JSONObject();
+                        List<ScanResult> resultList = wifi.getScanResults();//get wifi around
+                        if (!checkIfExistInDB(resultList)) {// get in only if the list isnt the same as last
                             try {
-                                wifi.put("bssid", a.BSSID);
-                                wifi.put("signal", a.level);
-                                wifi.put("frequency", a.frequency);
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                    wifi.put("channel", a.channelWidth);
+                                String token = InstanceID.getInstance(context).getToken(Helper.SENDER_ID, "GCM");
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            JSONArray json = new JSONArray();
+                            JSONObject jo = new JSONObject();
+
+                            for (ScanResult a : resultList) {
+                                JSONObject wifi = new JSONObject();
+                                try {
+                                    wifi.put("bssid", a.BSSID);
+                                    wifi.put("signal", a.level);
+                                    wifi.put("frequency", a.frequency);
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                        wifi.put("channel", a.channelWidth);
+                                    }
+                                    json.put(wifi);
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
                                 }
-                                json.put(wifi);
+                            }
+                            try {
+                                jo.put("found_wifi", json);
+                                Log.i(Helper.WIFI_TAG, "Sending to server:");
+                                String toSend = jo.toString();
+                                Log.i(Helper.WIFI_TAG, toSend);
+
+                                Helper.sendMessage(context.getApplicationContext(), "wifi-message", memory.getString("to", ""), toSend);
+
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }
                         }
-                        try {
-                            jo.put("found_wifi", json);
-                            Log.i(Helper.WIFI_TAG, "Sending to server:");
-                            Log.i(Helper.WIFI_TAG, json.toString());
-                            Helper.sendMessage(context.getApplicationContext(), "message", "", jo.toString());
-
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-
                     }
 
-                }, 0, 5, TimeUnit.SECONDS);
+                }, 0, 15, TimeUnit.SECONDS);
 
+    }
+
+    private boolean checkIfExistInDB(List<ScanResult> results) {
+        WIfiListDBHelper wifiDB = new WIfiListDBHelper(context);
+        Cursor c = wifiDB.getDB();
+        Comparator<ScanResult> comparator = new Comparator<ScanResult>() {
+            @Override
+            public int compare(ScanResult lhs, ScanResult rhs) {
+                return (lhs.level < rhs.level ? -1 : (lhs.level == rhs.level ? 0 : 1));
+            }
+        };
+        Collections.sort(results, comparator);
+        if (results.size() != c.getCount())
+            return false;
+        for (ScanResult s : results) {
+            if (s.BSSID != c.getString(c.getPosition()))
+                return false;
+
+            try {
+                c.moveToNext();
+            } finally {
+                c.close();
+            }
+        }
+        return true;
+    }
+
+    public void stopSearch() {
+        result.cancel(true);
     }
 }

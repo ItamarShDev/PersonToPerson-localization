@@ -151,6 +151,7 @@ public class MainScreenActivity extends AppCompatActivity
             }
         }
     };
+    private WifiScanner ws = null;
     private BluetoothAdapter mBluetoothAdapter;
     private WifiManager wifi;
     private Location currentLocation, target;
@@ -206,10 +207,13 @@ public class MainScreenActivity extends AppCompatActivity
             }
             SharedPreferences.Editor edit = memory.edit();
             // Extract data included in the Intent
-            String locationMsg = intent.getStringExtra("location");
             String message = intent.getStringExtra("message");
+            boolean hasWifis = message.contains("found_wifi");
             String btMessage = intent.getStringExtra("bt_info");
             String wifiMessage = intent.getStringExtra("wifi_info");
+            String session = intent.getStringExtra("session");
+            if (session != null)
+                edit.putString("session", session).apply();
             if (btMessage != null) {
                 btMessage = btMessage.split("UUID")[1];
                 edit.putString("BT-UUID", btMessage).apply();
@@ -222,39 +226,46 @@ public class MainScreenActivity extends AppCompatActivity
                 Log.d(Helper.BT_TAG, "Receiver got wifi " + wifiMessage);
                 Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
 
-            } else if (locationMsg != null) {
-                Log.i("ALGORITHM", "GOT Location");
+            } else if (hasWifis) {
+                String locationMsg = message;
                 String addr = memory.getString("WIFI-UUID", "");
-                if (!addr.equals("")) {
-                    Log.d(Helper.WIFI_TAG, "Got Address " + addr);
-                    List<ScanResult> resultList = wifi.getScanResults();
-                    JSONArray json = new JSONArray();
-                    JSONObject jo = new JSONObject();
+                List<ScanResult> resultList = wifi.getScanResults();
+                JSONArray json = new JSONArray();
+                JSONObject jo = new JSONObject();
+                try {
+                    JSONObject tJo = new JSONObject(locationMsg);
+                    JSONArray ja = tJo.getJSONArray("found_wifi");
+                    Log.i("ALGORITHM", "got " + ja.toString());
+                    jo.put("data2", ja);
+                    Log.i("ALGORITHM", "added " + jo.toString());
                     try {
-                        JSONObject tJo = new JSONObject(locationMsg);
-                        JSONArray ja = tJo.getJSONArray("found_wifi");
-                        jo.put("data2", ja);
-                        String token = InstanceID.getInstance(context).getToken(Helper.SENDER_ID, "GCM");
+                        String token = InstanceID.getInstance(getApplicationContext()).getToken(Helper.SENDER_ID, "GCM");
+                        Log.i("ALGORITHM", "TOKEN " + token);
                         jo.put("from", token);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    for (ScanResult a : resultList) {
-                        JSONObject wifi = new JSONObject();
-                        try {
-                            wifi.put("bssid", a.BSSID);
-                            wifi.put("signal", a.level);
-                            wifi.put("frequency", a.frequency);
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                wifi.put("channel", a.channelWidth);
-                            }
-                            json.put(wifi);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
+                    //  Log.i("ALGORITHM", "sending to " + memory.getString("to", ""));
 
+                    jo.put("to", memory.getString("to", ""));
+                    Log.i("ALGORITHM", jo.toString());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                for (ScanResult a : resultList) {
+                    JSONObject wifi = new JSONObject();
+                    try {
+                        wifi.put("bssid", a.BSSID);
+                        wifi.put("signal", a.level);
+                        wifi.put("frequency", a.frequency);
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            wifi.put("channel", a.channelWidth);
+                        }
+                        json.put(wifi);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    if (!addr.equals("")) {
                         Log.d(Helper.WIFI_TAG, "Looking for: " + addr + " found " + a.BSSID);
                         if (a.BSSID.equals(addr)) {
                             Log.d(Helper.WIFI_TAG, "match " + a.BSSID);
@@ -267,13 +278,13 @@ public class MainScreenActivity extends AppCompatActivity
                         }
 
                     }
-                    try {
-                        jo.put("data", json);
-                        Log.i(Helper.WIFI_TAG, json.toString());
-                        Helper.sendMessage(getBaseContext(), "server", "", jo.toString());
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
+                }
+                try {
+                    jo.put("data", json);
+                    Log.i(Helper.WIFI_TAG, json.toString());
+                    Helper.sendMessage(getBaseContext(), "server", "", jo.toString());
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
 
             } else if (message != null) {
@@ -324,6 +335,7 @@ public class MainScreenActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_screen);
         initViews();
@@ -351,7 +363,6 @@ public class MainScreenActivity extends AppCompatActivity
         fab.setOnLongClickListener(this);
         fab.setOnClickListener(this);
         tab.setupWithViewPager(mViewPager);
-
         //*************************************************************************
         // prompt for phone number and name only when application first installed *
         //*************************************************************************
@@ -389,9 +400,13 @@ public class MainScreenActivity extends AppCompatActivity
                     SharedPreferences.Editor edit = memory.edit();
                     edit.putString("to", to);//save recipient
                     edit.putString("bt_status", "server");//change bluetooth mode to server
-
                     edit.apply();
                     Helper.sendMessage(getApplicationContext(), "message", to, Helper.APPROVED);//send approval message
+
+                    Log.d("ALGORITHM", "Activating WifiScanner");
+                    ws = new WifiScanner(getApplicationContext());
+
+                    ws.run();
                 } else if (tabToOpen == 2) {
                     nm.cancel(1);
                     receiving = true;
@@ -399,6 +414,8 @@ public class MainScreenActivity extends AppCompatActivity
                 startService(service); //start and bind wifi service
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
             } else if (action.equals(Helper.MODE_STOP)) {//if stop mode
+                if (ws != null)
+                    ws.stopSearch();
                 String session = memory.getString("session", "");
                 Helper.sendMessage(this, "end", "", session);
                 nm.cancel(2);//delete notification
@@ -448,11 +465,13 @@ public class MainScreenActivity extends AppCompatActivity
                         // app-defined int constant. The callback method gets the
                         // result of the request.
                     }
-                } else {
-                    readContacts();
                 }
-            } else
-                readContacts();
+//                else {
+//                    readContacts();
+//                }
+            }
+//            else
+//                readContacts();
         }
 
         //********************* Tabs Listener  ******************************
@@ -480,6 +499,8 @@ public class MainScreenActivity extends AppCompatActivity
      * stopping the search mode
      */
     private void stopSearch() {
+        if (ws != null)
+            ws.stopSearch();
         String session = memory.getString("session", "");
         Helper.sendMessage(this, "end", "", session);
         memory.edit().putString("WIFI-UUID", "").apply();
@@ -501,7 +522,8 @@ public class MainScreenActivity extends AppCompatActivity
             //disable receivers
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
-            ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
+            if (ApManager.isApOn(MainScreenActivity.this))
+                ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
             wifi.setWifiEnabled(true);
             try {
                 LocalBroadcastManager.getInstance(this).unregisterReceiver(mBTReceiver);//clse bt receiver
@@ -591,21 +613,13 @@ public class MainScreenActivity extends AppCompatActivity
      * @param distance = the measured distance
      */
     private void distanceAlgo(float distance) {
-
-        String type = memory.getString("bt_status", "");
-
         if (!wifiOn) {
-            if (type.equals("server")) {
-                Log.d("ALGORITHM", "Activating WifiScanner");
-                WifiScanner ws = new WifiScanner(getApplicationContext());
-                ws.run();
+            if (distance < Helper.BT_DISTANCE) {
+                Log.i("ALGORITHM", "blueToothAndWifi");
+                blueToothAndWifi(distance);
+//                wifi();
             }
             wifiOn = true;
-        }
-        if (distance < Helper.BT_DISTANCE) {
-            Log.i("ALGORITHM", "blueToothAndWifi");
-            blueToothAndWifi(distance);
-            wifi();
         }
 
     }
@@ -970,7 +984,7 @@ public class MainScreenActivity extends AppCompatActivity
     // This function sending to GCM server list of contacts from phonebook and getting all registered friends,
     // adding them to list of contacts
     public void sendToServer(final int src, final ArrayList<String> phoneList, final ArrayList<String> names) {
-        String serverAddr = Helper.SERVER_ADDR + "/contacts";
+        String serverAddr = Helper.SERVER_ADDR + "contacts";
         context = this;
         RequestQueue queue = Volley.newRequestQueue(getBaseContext());
         ArrayList<String> list = new ArrayList<String>();
@@ -1003,7 +1017,7 @@ public class MainScreenActivity extends AppCompatActivity
                         try {
                             dialog.cancel();
                             JSONArray result = response.getJSONArray("response");
-                            Log.d(TAG, "response is: " + result);
+                            Log.d(TAG, "contacts response is: " + result);
                             for (int i = 0; i < result.length(); i++) {
                                 String phone = result.get(i).toString().replace("\n", "").trim();
                                 for (int j = 0; j < phoneList.size(); j++) {

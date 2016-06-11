@@ -28,6 +28,7 @@ import org.json.JSONObject;
 public class GcmIntentService extends IntentService {
     private SharedPreferences memory;
     private SharedPreferences.Editor edit;
+    private String Session = null;
 
     public GcmIntentService() {
         super("GcmIntentService");
@@ -49,14 +50,13 @@ public class GcmIntentService extends IntentService {
                 if (m.compareTo("registered") == 0) {
                     Log.i(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
                 } else {
-
+                    memory = getBaseContext().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
+                    edit = memory.edit();
                     try {
                         JSONObject js = new JSONObject(m);
                         String str = js.getString("message");
-                        Log.i("MESSAGE", m);
                         if (js.has("session")) {
-                            String session = js.getString("session");
-                            edit.putString("session", session).apply();
+                            Session = js.getString("session");
                         }
                         if (str.contains(",")) {
                             sendMessage(str);
@@ -80,8 +80,14 @@ public class GcmIntentService extends IntentService {
         GcmBroadcastReceiver.completeWakefulIntent(intent);
     }
 
+    private void addSession(Intent i) {
+        if (Session != null)
+            i.putExtra("session", Session);
+    }
+
     private void wifiMessage(String data) {
         Intent intent = new Intent(Helper.WIFI_DATA);
+        addSession(intent);
         intent.putExtra("wifi_info", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -89,6 +95,7 @@ public class GcmIntentService extends IntentService {
     //function to activate the Bluetooth receiver
     private void btMessage(String data) {
         Intent intent = new Intent(Helper.BT_DATA);
+        addSession(intent);
         intent.putExtra("bt_info", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -96,6 +103,7 @@ public class GcmIntentService extends IntentService {
     //Function send broadcast to main activity, to treat location message
     private void locationeMessage(String data) {
         Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
+        addSession(intent);
         intent.putExtra("location", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -103,6 +111,7 @@ public class GcmIntentService extends IntentService {
     //Function send broadcast to main activity, to treat location message
     private void sendMessage(String data) {
         Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
+        addSession(intent);
         intent.putExtra("message", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }

@@ -80,7 +80,7 @@ public class SendMessageIntentService extends IntentService {
                             String res = response.getString("response");
 
                         } catch (JSONException e) {
-                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Error on response " + e.getMessage());
+                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer - Error on response " + e.getMessage());
                         }
                     }
                 },
@@ -89,8 +89,8 @@ public class SendMessageIntentService extends IntentService {
                     public void onErrorResponse(VolleyError error) {
                         Toast.makeText(context, "Got error: " + error.getMessage(), Toast.LENGTH_LONG).show();
                         try {
-
-                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.toString());
+                            error.getStackTrace();
+                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer Got " + error.networkResponse);
                             Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.getLocalizedMessage());
 
                         } catch (NullPointerException e) {
@@ -125,6 +125,21 @@ public class SendMessageIntentService extends IntentService {
         sendToServer(op, jsonBody);
     }
 
+    public void sendMessage(String to, JSONObject message) {
+        String op = "message";
+        JSONObject jsonBody = new JSONObject();
+        memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
+        String myPhone = helper.encode(memory.getString("myphone", ""));
+        try {
+            jsonBody.put("from", myPhone);
+            jsonBody.put("to", to);
+            jsonBody.put("message", message);
+
+        } catch (JSONException e) {
+            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
+        }
+        sendToServer(op, jsonBody);
+    }
     private void updateServer(String message) {
         try {
             String op = "get_location";
@@ -174,6 +189,14 @@ public class SendMessageIntentService extends IntentService {
             case "register":
                 registerToServer();
                 break;
+            case "wifi-message":
+                try {
+                    JSONObject jo = new JSONObject(message);
+                    sendMessage(to, jo);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                break;
             case "message":
                 sendMessage(to, message);
                 break;
@@ -190,8 +213,10 @@ public class SendMessageIntentService extends IntentService {
 
     private void endConnection(String message) {
         try {
+            Log.d("CONNECTION-CLOSE", message);
             String op = "close_session";
-            JSONObject json = new JSONObject(message);
+            JSONObject json = new JSONObject("{session:" + message + "}");
+            sendToServer(op, json);
         } catch (JSONException e) {
             e.printStackTrace();
         }

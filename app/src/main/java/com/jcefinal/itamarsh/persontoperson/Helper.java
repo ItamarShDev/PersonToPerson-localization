@@ -19,7 +19,7 @@ public class Helper {
             STOP_SEARCH = "Search Stopped",
             SEARCH_STOPPED = "The Search Has Been Stopped by the User";
     public static final int MY_SOCKET_TIMEOUT_MS = 10000;
-    public static final String SERVER_ADDR = "http://p2p-gcm-server2.appspot.com/";
+    public static final String SERVER_ADDR = "http://p2p-gcm-server3.appspot.com/";
     public static final int BT_DISTANCE = 20, WIFI_DISTANCE = 300;
     public final static int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 10;
     public static final String CONNECTION_TAG = "myDebug",
