@@ -80,7 +80,7 @@ public class SendMessageIntentService extends IntentService {
                             String res = response.getString("response");
 
                         } catch (JSONException e) {
-                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer - Error on response " + e.getMessage());
+                            Log.d(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer - Error on response " + e.getMessage());
                         }
                     }
                 },
@@ -165,7 +165,7 @@ public class SendMessageIntentService extends IntentService {
             jsonBody.put("username", memory.getString("myname", "almoni"));
 
         } catch (JSONException e) {
-            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
+            Log.d(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
         }
         sendToServer(op, jsonBody);
     }

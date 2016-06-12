@@ -46,9 +46,9 @@ public class GcmIntentService extends IntentService {
         if (extras != null && !extras.isEmpty()) {  // has effect of unparcelling Bundle
             if (GoogleCloudMessaging.MESSAGE_TYPE_MESSAGE.equals(messageType)) {
                 String m = extras.getString("message", "empty");
-//                Log.i(Helper.CONNECTION_TAG, "Got message\nMessage: " + m);
+//                Log.d(Helper.CONNECTION_TAG, "Got message\nMessage: " + m);
                 if (m.compareTo("registered") == 0) {
-                    Log.i(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
+                    Log.d(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
                 } else {
                     memory = getBaseContext().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
                     edit = memory.edit();
@@ -70,7 +70,7 @@ public class GcmIntentService extends IntentService {
                             showNotification(extras.getString("message"));
                         }
                     } catch (JSONException e) {
-                        Log.i("bundle", "json exception");
+                        Log.d("bundle", "json exception");
                         e.printStackTrace();
                     }
                 }

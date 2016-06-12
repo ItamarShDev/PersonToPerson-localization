@@ -42,7 +42,7 @@ public class LocationService extends Service implements LocationListener {
         gpsOn = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
         networkOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
 
-        Log.i(TAG, "GPS is " + gpsOn);
+        Log.d(TAG, "GPS is " + gpsOn);
         if (!gpsOn) {
             showDialog(GPS_ON);
         }
@@ -57,7 +57,7 @@ public class LocationService extends Service implements LocationListener {
             locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 0, 0, locListener);
 
         } catch (SecurityException s) {
-            Log.i(TAG, "Security Exception");
+            Log.d(TAG, "Security Exception");
 
         }
 
@@ -89,7 +89,7 @@ public class LocationService extends Service implements LocationListener {
 
     @Override
     public void onDestroy() {
-        Log.i(TAG, "OnDestroy");
+        Log.d(TAG, "OnDestroy");
         locListener = this;
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;

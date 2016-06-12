@@ -46,7 +46,7 @@ public class BlueToohServer extends Thread {
             } catch (IOException e) {
                 break;
             }
-            Log.i(Helper.BT_TAG, "accepted " + socket.isConnected());
+            Log.d(Helper.BT_TAG, "accepted " + socket.isConnected());
             // If a connection was accepted
             if (socket != null) {
                 Log.d(Helper.BT_TAG, "Server Got Socket Request");
