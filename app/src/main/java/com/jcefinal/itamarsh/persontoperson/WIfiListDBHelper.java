@@ -14,7 +14,6 @@ public class WIfiListDBHelper extends SQLiteOpenHelper {
 
     public WIfiListDBHelper(Context context) {
         super(context, DB_NAME, null, DATABASE_VER);
-        Log.d("WifiDB", "started WIfiListDBHelper");
     }
 
     public static int getDatabaseVer() {
@@ -23,7 +22,6 @@ public class WIfiListDBHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        Log.d("WifiDB", "WIfiListDBHelper onCreate");
         db.execSQL("CREATE TABLE " + WifiList.WifiTable.TABLE_NAME + " ( "
                 + WifiList.WifiTable._ID + " INTEGER PRIMARY KEY autoincrement, "
                 + WifiList.WifiTable.FREQUENCY + " INTEGER, "
@@ -31,7 +29,6 @@ public class WIfiListDBHelper extends SQLiteOpenHelper {
                 + WifiList.WifiTable.CHANNEL + " INTEGER, "
                 + "" + WifiList.WifiTable.BSSID + " TEXT NOT NULL UNIQUE"
                 + ");");
-        Log.d("WifiDB", "WIfiListDBHelper db created");
 
     }
 
@@ -41,6 +38,7 @@ public class WIfiListDBHelper extends SQLiteOpenHelper {
     }
 
     public void reserDb(SQLiteDatabase db) {
+        Log.i("WifiDB", "resetting DB");
         db.execSQL("DROP TABLE IF EXISTS " + WifiList.WifiTable.TABLE_NAME);
         onCreate(db);
     }

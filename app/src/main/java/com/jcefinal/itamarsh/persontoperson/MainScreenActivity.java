@@ -44,7 +44,10 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.telephony.NeighboringCellInfo;
 import android.telephony.SmsManager;
+import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -68,13 +71,11 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
-import com.google.android.gms.iid.InstanceID;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -127,7 +128,7 @@ public class MainScreenActivity extends AppCompatActivity
                 // Add the name and address to an array adapter to show in a ListView
                 if (!memory.getString("BT-UUID", "").equals("")) {
                     try {
-                        UUID uuid = UUID.fromString(memory.getString("BT-UUID", "").toString());
+                        UUID uuid = UUID.fromString(memory.getString("BT-UUID", ""));
                         for (ParcelUuid u : device.getUuids()) {
                             if (u.getUuid().compareTo(uuid) == 0) {
                                 ConnectThread ct = new ConnectThread(device, uuid);
@@ -220,59 +221,8 @@ public class MainScreenActivity extends AppCompatActivity
                 Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
 
             } else if (hasWifis) {
-                String locationMsg = message;
-                String addr = memory.getString("WIFI-UUID", "");
-                List<ScanResult> resultList = wifi.getScanResults();
-                JSONArray json = new JSONArray();
-                JSONObject jo = new JSONObject();
-                try {
-                    JSONObject tJo = new JSONObject(locationMsg);
-                    JSONArray ja = tJo.getJSONArray("found_wifi");
-                    jo.put("data2", ja);
-                    try {
-                        String token = InstanceID.getInstance(getApplicationContext()).getToken(Helper.SENDER_ID, "GCM");
-                        jo.put("from", token);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    jo.put("to", memory.getString("to", ""));
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-                for (ScanResult a : resultList) {
-                    JSONObject wifi = new JSONObject();
-                    try {
-                        wifi.put("bssid", a.BSSID);
-                        wifi.put("signal", a.level);
-                        wifi.put("frequency", a.frequency);
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            wifi.put("channel", a.channelWidth);
-                        }
-                        json.put(wifi);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                    if (!addr.equals("")) {
-                        if (a.BSSID.equals(addr)) {
-                            //scheduled task to run wifi
-                            TextView tv1 = (TextView) findViewById(R.id.wifiTextView);
-                            double d = calculateDistance(a.level, a.frequency);
-                            String dString = "Approx Wifi Distance: " + d + " meters";
-                            tv1.setText(dString);
-                        }
-
-                    }
-                }
-                try {
-                    jo.put("data", json);
-                    Log.d(Helper.WIFI_TAG, json.toString());
-                    Helper.sendMessage(getBaseContext(), "server", "", jo.toString());
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-            } else if (message != null) {
+                triangulation(message);
+            } else {
 
                 float d = 0;
                 if (locationService.getLastLocation() != null) {// If current location set
@@ -316,6 +266,127 @@ public class MainScreenActivity extends AppCompatActivity
         double dy = y2 - y1;
 
         return (Math.atan2(dx, dy) * 180) / Math.PI;
+    }
+
+    /**
+     * function to get the wifis the from other end, and send both to server to get location
+     */
+    private void triangulation(String message) {
+        String addr = memory.getString("WIFI-UUID", "");//get UUID
+        List<ScanResult> resultList = wifi.getScanResults();//scan wifi
+        //needed JSONs
+        JSONArray jsonArray = new JSONArray();
+        JSONObject jo = new JSONObject();
+        JSONObject sendJson = new JSONObject();
+
+        try {
+            JSONObject tJo = new JSONObject(message);//create Json
+            sendJson.put("data2", tJo);//add to the new JSON
+            sendJson.put("from", helper.encode(memory.getString("myphone", "")));//add my phone
+            sendJson.put("to", memory.getString("to", ""));//who to send to
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        for (ScanResult a : resultList) {
+            JSONObject wifi = new JSONObject();//wifi JSON
+            try {//create each wifi a json
+                wifi.put("bssid", a.BSSID);
+                wifi.put("signal", a.level);
+                wifi.put("frequency", a.frequency);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) { //only from Marshmallow
+                    wifi.put("channel", a.channelWidth);
+                }
+                jsonArray.put(wifi);//insert to a list
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            if (!addr.equals("")) {
+                if (a.BSSID.equals(addr)) {
+                    //scheduled task to run wifi
+                    TextView tv1 = (TextView) findViewById(R.id.wifiTextView);
+                    double d = calculateDistance(a.level, a.frequency);
+                    String dString = "Approx Wifi Distance: " + d + " meters";
+                    tv1.setText(dString);
+                }
+
+            }
+        }
+        try {
+            /**
+             * Get Cellular Data
+             */
+            TelephonyManager tel = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            String networkOperator = tel.getNetworkOperator();
+
+            if (!TextUtils.isEmpty(networkOperator)) {
+                int mcc = Integer.parseInt(networkOperator.substring(0, 3));
+                int mnc = Integer.parseInt(networkOperator.substring(3));
+                String network = tel.getNetworkOperator();
+                int networkType = tel.getNetworkType();
+                String netType = "";
+                switch (networkType) {
+                    case 4:
+                        netType = "cdma";
+                        break;
+                    case 1:
+                        netType = "gsm";
+                        break;
+                    case 8:
+                        netType = "gsm";
+                        break;
+                    case 10:
+                        netType = "gsm";
+                        break;
+                    case 15:
+                        netType = "gsm";
+                        break;
+                    case 9:
+                        netType = "gsm";
+                        break;
+                    case 13:
+                        netType = "lte";
+                        break;
+                    case 3:
+                        netType = "wcdma";
+                        break;
+                    case 0:
+                        netType = "Unknown";
+                        break;
+                }
+                //add to JSON
+                jo.put("homeMobileCountryCode", mcc);
+                jo.put("homeMobileNetworkCode", mnc);
+                jo.put("carrier", network);
+                jo.put("radioType", netType);
+            }
+            //get cells ID
+            JSONArray cellList = new JSONArray();
+            List<NeighboringCellInfo> neighCells = tel.getNeighboringCellInfo();
+            for (int i = 0; i < neighCells.size(); i++) {
+                try {
+                    JSONObject cellObj = new JSONObject();
+                    NeighboringCellInfo thisCell = neighCells.get(i);
+                    cellObj.put("cellId", thisCell.getCid());
+                    cellList.put(cellObj);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            if (cellList.length() > 0) {
+                try {
+                    jo.put("cellTowers", cellList);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            jo.put("found_wifi", jsonArray);
+            sendJson.put("data", jo);
+            Log.d(Helper.WIFI_TAG, sendJson.toString());
+            Helper.sendMessage(getBaseContext(), "server", "", sendJson.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
     }
 
     @Override
@@ -448,13 +519,11 @@ public class MainScreenActivity extends AppCompatActivity
                         // app-defined int constant. The callback method gets the
                         // result of the request.
                     }
+                } else {
+                    readContacts();
                 }
-//                else {
-//                    readContacts();
-//                }
-            }
-//            else
-//                readContacts();
+            } else
+                readContacts();
         }
 
         //********************* Tabs Listener  ******************************
@@ -481,7 +550,6 @@ public class MainScreenActivity extends AppCompatActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        ws.stopSearch();
     }
 
     /**
@@ -1002,6 +1070,7 @@ public class MainScreenActivity extends AppCompatActivity
                             JSONArray result = response.getJSONArray("response");
                             for (int i = 0; i < result.length(); i++) {
                                 String phone = result.get(i).toString().replace("\n", "").trim();
+
                                 for (int j = 0; j < phoneList.size(); j++) {
                                     if (phone.equals(helper.encode(phoneList.get(j)).trim())) {
                                         dal.addEntries(names.get(j), phoneList.get(j));

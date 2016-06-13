@@ -9,16 +9,17 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Build;
+import android.telephony.NeighboringCellInfo;
+import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
-import com.google.android.gms.iid.InstanceID;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -44,7 +45,6 @@ public class WifiScanner extends Thread {
     private SQLiteDatabase db;
 
     public WifiScanner(Context c) {
-        Log.d("ALGORITHM", "in WiFi Scanner");
         wifi = (WifiManager) c.getSystemService(Context.WIFI_SERVICE);
         mManager = (WifiP2pManager) c.getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(c, c.getMainLooper(), null);
@@ -56,7 +56,7 @@ public class WifiScanner extends Thread {
     }
 
     public void run() {
-        Log.d("ALGORITHM", "RUN in WiFi Scanner");
+
         scheduler =
                 Executors.newSingleThreadScheduledExecutor();
         result = scheduler.scheduleAtFixedRate
@@ -65,12 +65,7 @@ public class WifiScanner extends Thread {
                         Log.d(Helper.WIFI_TAG, "In WiFi Scanner");
                         List<ScanResult> resultList = wifi.getScanResults();//get wifi around
                         if (!checkIfExistInDB(resultList)) {// get in only if the list isnt the same as last
-
-                            try {
-                                String token = InstanceID.getInstance(context).getToken(Helper.SENDER_ID, "GCM");
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
+                            Log.i("WifiDB", "Scanning Wifis");
                             JSONArray json = new JSONArray();
                             JSONObject jo = new JSONObject();
 
@@ -81,7 +76,6 @@ public class WifiScanner extends Thread {
                                     wifi.put("bssid", a.BSSID);
                                     wifi.put("signal", a.level);
                                     wifi.put("frequency", a.frequency);
-                                    Log.d("WifiDB", "adding wifi");
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                                         wifi.put("channel", a.channelWidth);
                                         addWifi(a.BSSID, a.level, a.channelWidth, a.frequency);
@@ -95,11 +89,74 @@ public class WifiScanner extends Thread {
                             }
                             try {
                                 jo.put("found_wifi", json);
-                                Log.d(Helper.WIFI_TAG, "Sending to server:");
+
+                                TelephonyManager tel = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+                                String networkOperator = tel.getNetworkOperator();
+
+                                if (!TextUtils.isEmpty(networkOperator)) {
+                                    int mcc = Integer.parseInt(networkOperator.substring(0, 3));
+                                    int mnc = Integer.parseInt(networkOperator.substring(3));
+                                    String network = tel.getNetworkOperator();
+                                    int networkType = tel.getNetworkType();
+                                    String netType = "";
+                                    switch (networkType) {
+                                        case 4:
+                                            netType = "cdma";
+                                            break;
+                                        case 1:
+                                            netType = "gsm";
+                                            break;
+                                        case 8:
+                                            netType = "gsm";
+                                            break;
+                                        case 10:
+                                            netType = "gsm";
+                                            break;
+                                        case 15:
+                                            netType = "gsm";
+                                            break;
+                                        case 9:
+                                            netType = "gsm";
+                                            break;
+                                        case 13:
+                                            netType = "lte";
+                                            break;
+                                        case 3:
+                                            netType = "wcdma";
+                                            break;
+                                        case 0:
+                                            netType = "Unknown";
+                                            break;
+                                    }
+
+                                    jo.put("homeMobileCountryCode", mcc);
+                                    jo.put("homeMobileNetworkCode", mnc);
+                                    jo.put("carrier", network);
+                                    jo.put("radioType", netType);
+                                }
+
+                                JSONArray cellList = new JSONArray();
+                                List<NeighboringCellInfo> neighCells = tel.getNeighboringCellInfo();
+                                for (int i = 0; i < neighCells.size(); i++) {
+                                    try {
+                                        JSONObject cellObj = new JSONObject();
+                                        NeighboringCellInfo thisCell = neighCells.get(i);
+                                        cellObj.put("cellId", thisCell.getCid());
+                                        cellList.put(cellObj);
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                if (cellList.length() > 0) {
+                                    try {
+                                        jo.put("cellTowers", cellList);
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
                                 String toSend = jo.toString();
                                 Log.d(Helper.WIFI_TAG, toSend);
-
-//                                Helper.sendMessage(context.getApplicationContext(), "wifi-message", memory.getString("to", ""), toSend);
+                                Helper.sendMessage(context.getApplicationContext(), "wifi-message", memory.getString("to", ""), toSend);
 
                             } catch (JSONException e) {
                                 e.printStackTrace();
@@ -107,60 +164,48 @@ public class WifiScanner extends Thread {
                         }
                     }
 
-                }, 0, 5, TimeUnit.SECONDS);
+                }, 0, 7, TimeUnit.SECONDS);
 
     }
 
     private boolean checkIfExistInDB(List<ScanResult> results) {
-        Log.d("WifiDB", "checking existence");
-//        wifiDB = new WIfiListDBHelper(context);
+        Log.d("WifiDB", "checkIfExistInDB()");
         db = wifiDB.getReadableDatabase();
-        Log.d("WifiDB", "after getReadableDatabase");
         Cursor c = getDB();
         int count = c.getCount();
-        Log.d("WifiDB", "in db cursor count:" + count);
         boolean ret = true;
         Comparator<ScanResult> comparator = new Comparator<ScanResult>() {
             @Override
             public int compare(ScanResult lhs, ScanResult rhs) {
-                return (lhs.level < rhs.level ? -1 : (lhs.level == rhs.level ? 0 : 1));
+//                return (lhs.level < rhs.level ? -1 : (lhs.level == rhs.level ? 0 : 1));
+                return ((lhs.BSSID.compareTo(rhs.BSSID) < 0) ? -1 : lhs.BSSID.equals(rhs.BSSID) ? 0 : 1);
             }
         };
         Collections.sort(results, comparator);
         if (results.size() != count) {
+            Log.i("WifiDB", "Not the same length\n\tdb: " + count + ", found " + results.size());
             ret = false;
         } else {
-
-
-            Log.d("WifiDB", "comparing lists");
-
+            Log.i("WifiDB", "Same length");
             try {
                 while (c.moveToNext()) {
                     ScanResult s = results.get(c.getPosition());
-                    if (!s.BSSID.equals(c.getString(c.getPosition()))) {
+                    if (s.level != c.getInt(0)) {
+                        Log.i("WifiDB", s.level + " != " + c.getString(0));
                         ret = false;
-                        Log.d("WifiDB", s.BSSID + " != " + c.getString(c.getPosition()));
                         break;
+                    } else {
+                        ret = true;
                     }
-
                 }
             } finally {
+                Log.i("WifiDB", "Both Equal");
                 c.close();
             }
-
-//            for (ScanResult s : results) {
-//                Log.d("WifiDB", "counter "+c.getPosition());
-//
-//                try {
-////                    c.moveToNext();
-//                    cc++;
-//                } finally {
-//                    c.close();
-//                }
-//            }
         }
         if (!ret)
             wifiDB.reserDb(db);
+        Log.i("WifiDb", "existed? " + ret);
         return ret;
     }
 
@@ -169,9 +214,8 @@ public class WifiScanner extends Thread {
         // Define a projection that specifies which columns from the database
         // you will actually use after this query.
         String[] projection = {
-                WifiList.WifiTable._ID,
-                WifiList.WifiTable.BSSID,
-                WifiList.WifiTable.SIGNAL
+                WifiList.WifiTable.SIGNAL,
+                WifiList.WifiTable.BSSID
         };
 
 
@@ -184,18 +228,16 @@ public class WifiScanner extends Thread {
                 null,                            // The values for the WHERE clause
                 null,                                     // don't group the rows
                 null,                                     // don't filter by row groups
-                WifiList.WifiTable.SIGNAL                                 // The sort order
+                WifiList.WifiTable.BSSID                                 // The sort order
         );
-        Log.d("WifiDB", "WIfiListDBHelper getDB after query");
-
         c.moveToFirst();
+
         return c;
     }
 
     public long addWifi(String bssid, int signal, int channel, int frequency) {
         // Gets the data repository in write mode
         db = wifiDB.getWritableDatabase();
-        Log.d("WifiDB", "saving to db");
         // Create a new map of values, where column names are the keys
         ContentValues values = new ContentValues();
         values.put(WifiList.WifiTable.BSSID, bssid);
@@ -208,15 +250,16 @@ public class WifiScanner extends Thread {
         if (id == -1) {
             newRowId = db.update(WifiList.WifiTable.TABLE_NAME, values, "BSSID=?", new String[]{bssid});
         } else {
-            Log.d("WifiDB", "got " + id + " " + values.toString());
         }
 
         return newRowId;
     }
 
     public void stopSearch() {
+        Log.i("WifiDb", "search stopped");
         result.cancel(true);
         db = wifiDB.getWritableDatabase();
         wifiDB.reserDb(db);
+        wifiDB.close();
     }
 }

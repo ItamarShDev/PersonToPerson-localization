@@ -157,7 +157,6 @@ public class SendMessageIntentService extends IntentService {
         SharedPreferences memory;
         memory = context.getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
         String hashString = helper.encode(memory.getString("myphone", ""));
-
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("user_id", token);
