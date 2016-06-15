@@ -214,7 +214,8 @@ public class SendMessageIntentService extends IntentService {
         try {
             Log.d("CONNECTION-CLOSE", message);
             String op = "close_session";
-            JSONObject json = new JSONObject("{session:" + message + "}");
+            JSONObject json = new JSONObject();
+            json.put("session", message);
             sendToServer(op, json);
         } catch (JSONException e) {
             e.printStackTrace();

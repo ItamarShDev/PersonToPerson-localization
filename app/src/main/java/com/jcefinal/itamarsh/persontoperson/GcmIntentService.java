@@ -55,17 +55,21 @@ public class GcmIntentService extends IntentService {
                     try {
                         JSONObject js = new JSONObject(m);
                         String str = js.getString("message");
+
                         if (js.has("session")) {
                             Session = js.getString("session");
                         }
-                        if (str.contains(",")) {
-                            sendMessage(str);
+                        if (str.contains("your_location")) {
+                            Log.i("WifiDB", "Got Location Message");
+                            wifiLocationeMessage(str);
+                        } else if (str.contains(",")) {
+                            GPSMessage(str);
                         } else if (str.contains("WIFI")) {
                             wifiMessage(str);
                         } else if (str.contains("UUID")) {
                             btMessage(str);
                         } else if (str.contains("found_wifi")) {
-                            locationeMessage(str);
+                            wifiListMessage(str);
                         } else {
                             showNotification(extras.getString("message"));
                         }
@@ -80,11 +84,13 @@ public class GcmIntentService extends IntentService {
         GcmBroadcastReceiver.completeWakefulIntent(intent);
     }
 
+    //Function send broadcast to main activity, to treat session message
     private void addSession(Intent i) {
         if (Session != null)
             i.putExtra("session", Session);
     }
 
+    //Function send broadcast to main activity, to treat wifi message
     private void wifiMessage(String data) {
         Intent intent = new Intent(Helper.WIFI_DATA);
         addSession(intent);
@@ -101,18 +107,26 @@ public class GcmIntentService extends IntentService {
     }
 
     //Function send broadcast to main activity, to treat location message
-    private void locationeMessage(String data) {
+    private void wifiListMessage(String data) {
         Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
         addSession(intent);
-        intent.putExtra("location", data);
+        intent.putExtra("wifiList", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
-    //Function send broadcast to main activity, to treat location message
-    private void sendMessage(String data) {
+    //Function send broadcast to main activity, to treat wifi based location message
+    private void wifiLocationeMessage(String data) {
         Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
         addSession(intent);
-        intent.putExtra("message", data);
+        intent.putExtra("wifiLocation", data);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    //Function send broadcast to main activity, to treat gps location message
+    private void GPSMessage(String data) {
+        Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
+        addSession(intent);
+        intent.putExtra("gpsMessage", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 

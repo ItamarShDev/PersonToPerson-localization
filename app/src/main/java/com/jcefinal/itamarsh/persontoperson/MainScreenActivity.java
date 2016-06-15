@@ -196,6 +196,7 @@ public class MainScreenActivity extends AppCompatActivity
                 return;
             currentLocation = locationService.getLastLocation();
             if (flag) {
+                //initialize all sensors
                 mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
                 mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
                 mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
@@ -203,14 +204,16 @@ public class MainScreenActivity extends AppCompatActivity
             }
             SharedPreferences.Editor edit = memory.edit();
             // Extract data included in the Intent
-            String message = intent.getStringExtra("message");
-            boolean hasWifis = message.contains("found_wifi");
-            String btMessage = intent.getStringExtra("bt_info");
-            String wifiMessage = intent.getStringExtra("wifi_info");
-            String session = intent.getStringExtra("session");
+            String message = intent.getStringExtra("gpsMessage"); //got gps location
+            String btMessage = intent.getStringExtra("bt_info"); //got bluetooth info
+            String wifiMessage = intent.getStringExtra("wifi_info");//got wifi info
+            String session = intent.getStringExtra("session");//opens new session
+            String wifiLocation = intent.getStringExtra("wifiLocation");//got wifi based location
+            String wifiList = intent.getStringExtra("wifiList");//got wifi list
+            boolean hasWifis = wifiList.contains("found_wifi");
             if (session != null)
                 edit.putString("session", session).apply();
-            if (btMessage != null) {
+            else if (btMessage != null) {
                 btMessage = btMessage.split("UUID")[1];
                 edit.putString("BT-UUID", btMessage).apply();
                 Toast.makeText(context, "UUID Got: " + btMessage, Toast.LENGTH_LONG).show();
@@ -221,27 +224,25 @@ public class MainScreenActivity extends AppCompatActivity
                 Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
 
             } else if (hasWifis) {
-                triangulation(message);
+                triangulation(wifiList);
+            } else if (wifiLocation != null) {
+                try {
+                    JSONObject loc = new JSONObject(wifiLocation);
+                    JSONObject myLoc = loc.getJSONObject("your_location");
+                    JSONObject otherLoc = loc.getJSONObject("friend_location");
+                    selectLocationToShow(Helper.WIFI_SOURCE, myLoc, otherLoc);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
             } else {
-
-                float d = 0;
-                if (locationService.getLastLocation() != null) {// If current location set
-                    String location[] = message.split(",");
-                    String loc = "\nYour Location: \n" + String.format("%.2f", currentLocation.getLongitude()) + ","
-                            + String.format("%.2f", currentLocation.getLatitude());
-                    target.setLongitude(Float.valueOf(location[0]));
-                    target.setLatitude(Float.valueOf(location[1]));
-                    float l1 = Float.valueOf(location[0]);
-                    float l2 = Float.valueOf(location[1]);
-                    d = currentLocation.distanceTo(target);
-                    distanceAlgo(d);
-                    //Update friend's location
-                    String dtLoc = "Friend Location: " + String.format("%.2f", l1) + ',' + String.format("%.2f", l2) + "\nDistance: " +
-                            String.format("%.2f", d);
-                    TextView locationText = (TextView) findViewById(R.id.distanceText);
-                    locationText.setText(dtLoc);
-                    TextView m = (TextView) findViewById(R.id.textView);
-                    m.setText(loc);
+                JSONObject jsonMessage = new JSONObject();
+                String location[] = message.split(",");
+                try {
+                    jsonMessage.put("lon", location[0]);
+                    jsonMessage.put("lat", location[1]);
+                    selectLocationToShow(Helper.GPS_SOURCE, null, jsonMessage);
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
             }
 
@@ -249,7 +250,6 @@ public class MainScreenActivity extends AppCompatActivity
     };
     /**************************************************************************************************/
 
-    //BR for DIALOGS
     private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -268,6 +268,76 @@ public class MainScreenActivity extends AppCompatActivity
         return (Math.atan2(dx, dy) * 180) / Math.PI;
     }
 
+    private void selectLocationToShow(int source, JSONObject myLoc, JSONObject otherLoc) throws JSONException {
+        switch (source) {
+            case Helper.GPS_SOURCE:
+                JSONObject _myLoc = new JSONObject();
+                try {
+                    target.setLongitude(Float.valueOf(otherLoc.getString("lon")));
+                    target.setLatitude(Float.valueOf(otherLoc.getString("lat")));
+                    updateLocationView();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                break;
+            case Helper.WIFI_SOURCE:
+                //check if got real data
+                boolean myLocError = !myLoc.has("error");
+                boolean otherLocError = !otherLoc.has("error");
+                //uupdate needed data
+                if (myLocError) {
+                    setBestLocation(myLoc);
+                }
+                if (otherLocError) {
+                    setTargetToWifi(otherLoc);
+                }
+                updateLocationView();
+                break;
+        }
+    }
+
+    private void setTargetToWifi(JSONObject loc) throws JSONException {
+        target.setLongitude(Float.valueOf(loc.getString("lon")));
+        target.setLatitude(Float.valueOf(loc.getString("lat")));
+    }
+    /**************************************************************************************************/
+    /*                                  BR for DIALOGS                                                */
+    private void setBestLocation(JSONObject loc) throws JSONException {
+
+        float locationAccuracy = currentLocation.getAccuracy();
+        float wifiAccuracy = Float.valueOf(loc.getString("accuracy"));
+        boolean smallerThan = locationAccuracy > wifiAccuracy;
+        if (smallerThan) {
+            float lon = Float.valueOf(loc.getString("lon"));
+            float lat = Float.valueOf(loc.getString("lat"));
+            currentLocation.setLongitude(lon);
+            currentLocation.setLatitude(lat);
+            currentLocation.setAccuracy(wifiAccuracy);
+        }
+    }
+
+    private void updateLocationView() {
+        float d = 0;
+        if (locationService.getLastLocation() != null) {// If current location set
+            String loc = "\nYour Location: \n" + String.format("%.2f", currentLocation.getLongitude()) + ","
+                    + String.format("%.2f", currentLocation.getLatitude());
+            target.setLongitude(Float.valueOf(location[0]));
+            target.setLatitude(Float.valueOf(location[1]));
+            float l1 = Float.valueOf(location[0]);
+            float l2 = Float.valueOf(location[1]);
+            d = currentLocation.distanceTo(target);
+            distanceAlgo(d);
+            //Update friend's location
+            String dtLoc = "Friend Location: " + String.format("%.2f", l1) + ',' + String.format("%.2f", l2) + "\nDistance: " +
+                    String.format("%.2f", d);
+            TextView locationText = (TextView) findViewById(R.id.distanceText);
+            locationText.setText(dtLoc);
+            TextView m = (TextView) findViewById(R.id.textView);
+            m.setText(loc);
+        }
+    }
+
     /**
      * function to get the wifis the from other end, and send both to server to get location
      */
@@ -282,8 +352,8 @@ public class MainScreenActivity extends AppCompatActivity
         try {
             JSONObject tJo = new JSONObject(message);//create Json
             sendJson.put("data2", tJo);//add to the new JSON
-            sendJson.put("from", helper.encode(memory.getString("myphone", "")));//add my phone
-            sendJson.put("to", memory.getString("to", ""));//who to send to
+            sendJson.put("from", memory.getString("to", ""));//add my phone
+            sendJson.put("to", helper.encode(memory.getString("myphone", "")));//who to send to
         } catch (JSONException e) {
             e.printStackTrace();
         }
