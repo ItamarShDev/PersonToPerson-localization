@@ -207,6 +207,7 @@ public class SendMessageIntentService extends IntentService {
                 break;
             case "end":
                 endConnection(message);
+                break;
         }
     }
 

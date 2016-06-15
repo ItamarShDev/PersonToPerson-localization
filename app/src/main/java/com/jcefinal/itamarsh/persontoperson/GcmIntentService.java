@@ -60,6 +60,8 @@ public class GcmIntentService extends IntentService {
                         }
                         if (str.contains("your_location")) {
                             wifiLocationeMessage(str);
+                        } else if (str.contains("distance")) {
+                            distanceMessage(str);
                         } else if (str.contains("found_wifi")) {
                             wifiListMessage(str);
                         } else if (str.contains("WIFI")) {
@@ -80,6 +82,13 @@ public class GcmIntentService extends IntentService {
             }
         }
         GcmBroadcastReceiver.completeWakefulIntent(intent);
+    }
+
+    private void distanceMessage(String str) {
+        Intent intent = new Intent(Helper.WIFI_DATA);
+        addSession(intent);
+        intent.putExtra("distance", str);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     //Function send broadcast to main activity, to treat session message
