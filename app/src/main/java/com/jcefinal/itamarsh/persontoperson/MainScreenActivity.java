@@ -322,14 +322,16 @@ public class MainScreenActivity extends AppCompatActivity
         if (locationService.getLastLocation() != null) {// If current location set
             String loc = "\nYour Location: \n" + String.format("%.2f", currentLocation.getLongitude()) + ","
                     + String.format("%.2f", currentLocation.getLatitude());
-            target.setLongitude(Float.valueOf(location[0]));
-            target.setLatitude(Float.valueOf(location[1]));
-            float l1 = Float.valueOf(location[0]);
-            float l2 = Float.valueOf(location[1]);
+            //target.setLongitude(Float.valueOf(location[0]));
+            //target.setLatitude(Float.valueOf(location[1]));
+            //float l1 = Float.valueOf(location[0]);
+            //float l2 = Float.valueOf(location[1]);
             d = currentLocation.distanceTo(target);
             distanceAlgo(d);
             //Update friend's location
-            String dtLoc = "Friend Location: " + String.format("%.2f", l1) + ',' + String.format("%.2f", l2) + "\nDistance: " +
+            String dtLoc = "Friend Location: " + String.format("%.2f", target.getLatitude())
+                    + ',' + String.format("%.2f", target.getLongitude())
+                    + "\nDistance: " +
                     String.format("%.2f", d);
             TextView locationText = (TextView) findViewById(R.id.distanceText);
             locationText.setText(dtLoc);
