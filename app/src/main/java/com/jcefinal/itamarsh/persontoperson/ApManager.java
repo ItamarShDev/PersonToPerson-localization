@@ -28,7 +28,6 @@ public class ApManager {
         try {
             // if WiFi is on, turn it off
             if (wifimanager.isWifiEnabled()) {
-                Log.d(Helper.WIFI_TAG, "Turning off wifi");
                 wifimanager.setWifiEnabled(false);
             }
             Method method = wifimanager.getClass().getMethod("setWifiApEnabled", WifiConfiguration.class, boolean.class);

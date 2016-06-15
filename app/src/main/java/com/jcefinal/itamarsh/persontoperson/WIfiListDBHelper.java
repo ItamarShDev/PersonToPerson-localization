@@ -3,7 +3,6 @@ package com.jcefinal.itamarsh.persontoperson;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 /**
  * Created by itamar on 11-Jun-16.
@@ -38,7 +37,6 @@ public class WIfiListDBHelper extends SQLiteOpenHelper {
     }
 
     public void reserDb(SQLiteDatabase db) {
-        Log.i("WifiDB", "resetting DB");
         db.execSQL("DROP TABLE IF EXISTS " + WifiList.WifiTable.TABLE_NAME);
         onCreate(db);
     }
@@ -51,7 +49,6 @@ public class WIfiListDBHelper extends SQLiteOpenHelper {
 
     @Override
     public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        Log.d("WifiDB", "Downgrading");
         db.execSQL("DROP TABLE IF EXISTS " + WifiList.WifiTable.TABLE_NAME);
 
         onCreate(db);

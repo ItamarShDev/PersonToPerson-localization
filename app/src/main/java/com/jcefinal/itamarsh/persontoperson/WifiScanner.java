@@ -12,7 +12,6 @@ import android.os.Build;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
@@ -62,10 +61,8 @@ public class WifiScanner extends Thread {
         result = scheduler.scheduleAtFixedRate
                 (new Runnable() {//run every 15 seconds
                     public void run() {
-                        Log.d(Helper.WIFI_TAG, "In WiFi Scanner");
                         List<ScanResult> resultList = wifi.getScanResults();//get wifi around
                         if (!checkIfExistInDB(resultList)) {// get in only if the list isnt the same as last
-                            Log.i("WifiDB", "Scanning Wifis");
                             JSONArray json = new JSONArray();
                             JSONObject jo = new JSONObject();
 
@@ -155,7 +152,6 @@ public class WifiScanner extends Thread {
                                     }
                                 }
                                 String toSend = jo.toString();
-                                Log.d(Helper.WIFI_TAG, toSend);
                                 Helper.sendMessage(context.getApplicationContext(), "wifi-message", memory.getString("to", ""), toSend);
 
                             } catch (JSONException e) {
@@ -169,7 +165,6 @@ public class WifiScanner extends Thread {
     }
 
     private boolean checkIfExistInDB(List<ScanResult> results) {
-        Log.d("WifiDB", "checkIfExistInDB()");
         db = wifiDB.getReadableDatabase();
         Cursor c = getDB();
         int count = c.getCount();
@@ -177,21 +172,17 @@ public class WifiScanner extends Thread {
         Comparator<ScanResult> comparator = new Comparator<ScanResult>() {
             @Override
             public int compare(ScanResult lhs, ScanResult rhs) {
-//                return (lhs.level < rhs.level ? -1 : (lhs.level == rhs.level ? 0 : 1));
                 return ((lhs.BSSID.compareTo(rhs.BSSID) < 0) ? -1 : lhs.BSSID.equals(rhs.BSSID) ? 0 : 1);
             }
         };
         Collections.sort(results, comparator);
         if (results.size() != count) {
-            Log.i("WifiDB", "Not the same length\n\tdb: " + count + ", found " + results.size());
             ret = false;
         } else {
-            Log.i("WifiDB", "Same length");
             try {
                 while (c.moveToNext()) {
                     ScanResult s = results.get(c.getPosition());
                     if (s.level != c.getInt(0)) {
-                        Log.i("WifiDB", s.level + " != " + c.getString(0));
                         ret = false;
                         break;
                     } else {
@@ -199,18 +190,15 @@ public class WifiScanner extends Thread {
                     }
                 }
             } finally {
-                Log.i("WifiDB", "Both Equal");
                 c.close();
             }
         }
         if (!ret)
             wifiDB.reserDb(db);
-        Log.i("WifiDb", "existed? " + ret);
         return ret;
     }
 
     public Cursor getDB() {
-        Log.d("WifiDB", "WIfiListDBHelper getDB");
         // Define a projection that specifies which columns from the database
         // you will actually use after this query.
         String[] projection = {
@@ -256,7 +244,6 @@ public class WifiScanner extends Thread {
     }
 
     public void stopSearch() {
-        Log.i("WifiDb", "search stopped");
         result.cancel(true);
         db = wifiDB.getWritableDatabase();
         wifiDB.reserDb(db);

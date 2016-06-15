@@ -59,7 +59,7 @@ public class SendMessageIntentService extends IntentService {
             token = InstanceID.getInstance(context).getToken(authorizedEntity, scope);
 
         } catch (IOException ex) {
-            Log.d(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Failed to complete token refresh", ex);
+            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Failed to complete token refresh", ex);
             ex.printStackTrace();
         }
         prepareOperation(op, to, content);
@@ -80,7 +80,7 @@ public class SendMessageIntentService extends IntentService {
                             String res = response.getString("response");
 
                         } catch (JSONException e) {
-                            Log.d(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer - Error on response " + e.getMessage());
+                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer - Error on response " + e.getMessage());
                         }
                     }
                 },
@@ -212,7 +212,6 @@ public class SendMessageIntentService extends IntentService {
 
     private void endConnection(String message) {
         try {
-            Log.d("CONNECTION-CLOSE", message);
             String op = "close_session";
             JSONObject json = new JSONObject();
             json.put("session", message);

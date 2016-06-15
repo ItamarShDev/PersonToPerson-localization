@@ -51,30 +51,28 @@ public class GcmIntentService extends IntentService {
                     Log.d(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
                 } else {
                     memory = getBaseContext().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
-                    edit = memory.edit();
+//                    edit = memory.edit();
                     try {
                         JSONObject js = new JSONObject(m);
                         String str = js.getString("message");
-
                         if (js.has("session")) {
                             Session = js.getString("session");
                         }
                         if (str.contains("your_location")) {
-                            Log.i("WifiDB", "Got Location Message");
                             wifiLocationeMessage(str);
-                        } else if (str.contains(",")) {
-                            GPSMessage(str);
+                        } else if (str.contains("found_wifi")) {
+                            wifiListMessage(str);
                         } else if (str.contains("WIFI")) {
                             wifiMessage(str);
                         } else if (str.contains("UUID")) {
                             btMessage(str);
-                        } else if (str.contains("found_wifi")) {
-                            wifiListMessage(str);
+                        } else if (str.contains(",")) {
+                            GPSMessage(str);
                         } else {
                             showNotification(extras.getString("message"));
                         }
                     } catch (JSONException e) {
-                        Log.d("bundle", "json exception");
+                        Log.e("bundle", "json exception");
                         e.printStackTrace();
                     }
                 }

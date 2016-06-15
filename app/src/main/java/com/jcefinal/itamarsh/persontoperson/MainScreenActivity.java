@@ -96,6 +96,7 @@ public class MainScreenActivity extends AppCompatActivity
     public int[] iconIntArray = {R.drawable.ic_add_white_24dp, R.drawable.ic_play_arrow_white_24dp, R.drawable.ic_pause_white_24dp};
     boolean play;
     boolean gpsOn, networkOn;
+    float latestAccuracy = 999999999;
     private ArrayList<String> mArrayAdapter;
     private boolean wifiOn = false;
     private BroadcastReceiver mReceiver;
@@ -210,22 +211,27 @@ public class MainScreenActivity extends AppCompatActivity
             String session = intent.getStringExtra("session");//opens new session
             String wifiLocation = intent.getStringExtra("wifiLocation");//got wifi based location
             String wifiList = intent.getStringExtra("wifiList");//got wifi list
-            boolean hasWifis = wifiList.contains("found_wifi");
-            if (session != null)
+            boolean hasWifis = wifiList != null && wifiList.contains("found_wifi");
+
+            if (session != null) {
                 edit.putString("session", session).apply();
-            else if (btMessage != null) {
+            }
+            if (btMessage != null) {
                 btMessage = btMessage.split("UUID")[1];
                 edit.putString("BT-UUID", btMessage).apply();
                 Toast.makeText(context, "UUID Got: " + btMessage, Toast.LENGTH_LONG).show();
 
             } else if (wifiMessage != null) {
+
                 wifiMessage = wifiMessage.split("WIFI ")[1];
                 edit.putString("WIFI-UUID", wifiMessage).apply();
                 Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
 
-            } else if (hasWifis) {
+            } else if (wifiList != null) {
                 triangulation(wifiList);
             } else if (wifiLocation != null) {
+
+
                 try {
                     JSONObject loc = new JSONObject(wifiLocation);
                     JSONObject myLoc = loc.getJSONObject("your_location");
@@ -271,7 +277,6 @@ public class MainScreenActivity extends AppCompatActivity
     private void selectLocationToShow(int source, JSONObject myLoc, JSONObject otherLoc) throws JSONException {
         switch (source) {
             case Helper.GPS_SOURCE:
-                JSONObject _myLoc = new JSONObject();
                 try {
                     target.setLongitude(Float.valueOf(otherLoc.getString("lon")));
                     target.setLatitude(Float.valueOf(otherLoc.getString("lat")));
@@ -282,14 +287,18 @@ public class MainScreenActivity extends AppCompatActivity
 
                 break;
             case Helper.WIFI_SOURCE:
+                float myAcc = Float.valueOf(myLoc.getString("accuracy"));
+                float otherAcc = Float.valueOf(otherLoc.getString("accuracy"));
                 //check if got real data
-                boolean myLocError = !myLoc.has("error");
-                boolean otherLocError = !otherLoc.has("error");
+                boolean myLocError = myLoc.getString("error") == null;
+                boolean otherLocError = otherLoc.getString("error") == null;
                 //uupdate needed data
                 if (myLocError) {
-                    setBestLocation(myLoc);
+                    if (myAcc < currentLocation.getAccuracy())
+                        setBestLocation(myLoc);
                 }
                 if (otherLocError) {
+                    Log.i("ALGORITHM", "selectLocationToShow other location exist\n\t" + otherLoc.getString("error"));
                     setTargetToWifi(otherLoc);
                 }
                 updateLocationView();
@@ -301,6 +310,7 @@ public class MainScreenActivity extends AppCompatActivity
         target.setLongitude(Float.valueOf(loc.getString("lon")));
         target.setLatitude(Float.valueOf(loc.getString("lat")));
     }
+
     /**************************************************************************************************/
     /*                                  BR for DIALOGS                                                */
     private void setBestLocation(JSONObject loc) throws JSONException {
@@ -453,7 +463,6 @@ public class MainScreenActivity extends AppCompatActivity
             }
             jo.put("found_wifi", jsonArray);
             sendJson.put("data", jo);
-            Log.d(Helper.WIFI_TAG, sendJson.toString());
             Helper.sendMessage(getBaseContext(), "server", "", sendJson.toString());
         } catch (JSONException e) {
             e.printStackTrace();
@@ -634,7 +643,8 @@ public class MainScreenActivity extends AppCompatActivity
         Helper.sendMessage(this, "end", "", session);
         memory.edit().putString("WIFI-UUID", "").apply();
         try {
-            locationService.stopLocationServices();//stop location
+            if (locationService != null)
+                locationService.stopLocationServices();//stop location
             setSearchStatus(false, 1);//disable search
             receiving = false;
             stopService(service);//stop wifi
@@ -755,7 +765,6 @@ public class MainScreenActivity extends AppCompatActivity
     private void blueToothAndWifi(float distance) {
 
         if (mBluetoothAdapter == null) {
-            Log.d(Helper.BT_TAG, "no bt");
             // Device does not support Bluetooth
         } else {
             //if bluetooth is on
@@ -796,7 +805,6 @@ public class MainScreenActivity extends AppCompatActivity
                     e.printStackTrace();
                 }
             } else { //if bluetooth is off
-                Log.d(Helper.BT_TAG, "disabled");
                 mBluetoothAdapter.enable();
             }
         }
