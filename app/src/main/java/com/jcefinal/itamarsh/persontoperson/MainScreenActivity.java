@@ -763,16 +763,6 @@ public class MainScreenActivity extends AppCompatActivity
     }
 
 
-    /**
-     * enable mode depending on distance
-     *
-     * @param distance = the measured distance
-     */
-    private void distanceAlgo() {
-
-
-    }
-
     private void blueToothAndWifi() {
 
         if (mBluetoothAdapter == null) {
