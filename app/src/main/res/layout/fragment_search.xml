@@ -30,12 +30,6 @@
         android:text="@string/distanceString"
         android:textAppearance="?android:attr/textAppearanceLarge" />
 
-    <TextView
-        android:id="@+id/wifiTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <com.jcefinal.itamarsh.persontoperson.CompassView
         android:id="@+id/myView"

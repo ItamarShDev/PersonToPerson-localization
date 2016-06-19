@@ -145,9 +145,7 @@ public class MainScreenActivity extends AppCompatActivity
                     }
 
                     int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
-                    TextView btPower = (TextView) findViewById(R.id.textView3);
-                    btPower.setText("  RSSI: " + rssi + "dBm");
-//                    Toast.makeText(getApplicationContext(), "  RSSI: " + rssi + "dBm", Toast.LENGTH_SHORT).show();
+                    setMethodTextView("Bluetooth Strength");
                 }
             }
         }
@@ -241,13 +239,11 @@ public class MainScreenActivity extends AppCompatActivity
             } else if (btMessage != null) {
                 btMessage = btMessage.split("UUID")[1];
                 edit.putString("BT-UUID", btMessage).apply();
-                Toast.makeText(context, "UUID Got: " + btMessage, Toast.LENGTH_LONG).show();
 
             } else if (wifiMessage != null) {
 
                 wifiMessage = wifiMessage.split("WIFI ")[1];
                 edit.putString("WIFI-UUID", wifiMessage).apply();
-                Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
                 wifiScan(wifiMessage);
             } else if (wifiList != null) {
                 triangulation(wifiList);
@@ -287,7 +283,6 @@ public class MainScreenActivity extends AppCompatActivity
     }
 
     private void selectLocationToShow(int source, JSONObject myLoc, JSONObject otherLoc) throws JSONException {
-        TextView tv = (TextView) findViewById(R.id.textView3);
 
         switch (source) {
             case Helper.GPS_SOURCE:
@@ -296,7 +291,7 @@ public class MainScreenActivity extends AppCompatActivity
                     target.setLatitude(Float.valueOf(otherLoc.getString("lat")));
                     target.setAccuracy(currentLocation.getAccuracy());
 
-                    tv.setText("GPS");
+                    setMethodTextView("GPS");
                     updateLocationView();
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -310,7 +305,7 @@ public class MainScreenActivity extends AppCompatActivity
                 boolean myLocError = myLoc.getString("error") == null;
                 boolean otherLocError = otherLoc.getString("error") == null;
                 //update needed data
-                tv.setText("Public Wifi");
+                setMethodTextView("Public Wifi");
 
                 if (myLocError) {
                     setBestLocation(myLoc);
@@ -358,15 +353,16 @@ public class MainScreenActivity extends AppCompatActivity
         }
         blueToothAndWifi();
         //Update friend's location
-        TextView locationText = (TextView) findViewById(R.id.distanceText);
-        String dloc = "Approx Distance: " + (int) d;
-        locationText.setText(dloc);
-        TextView m = (TextView) findViewById(R.id.textView);
+        setDistanceTextView(d);
         float acc = (currentLocation.getAccuracy() + target.getAccuracy()) / 2;
-        String loc = "Accuracy: " + (int) acc;
+        setAccuracyTextView((int)acc);
+
+    }
+    public void setAccuracyTextView(int accuracy){
+        TextView m = (TextView) findViewById(R.id.textView);
+        String loc = "Accuracy: " + accuracy;
         m.setText(loc);
     }
-
     /**
      * function to get the wifis the from other end, and send both to server to get location
      */
@@ -402,10 +398,10 @@ public class MainScreenActivity extends AppCompatActivity
             if (!addr.equals("")) {
                 if (a.BSSID.equals(addr)) {
                     //scheduled task to run wifi
-                    TextView tv1 = (TextView) findViewById(R.id.wifiTextView);
                     double d = calculateDistance(a.level, a.frequency);
-                    String dString = "Approx Wifi Distance: " + d + " meters";
-                    tv1.setText(dString);
+                    setMethodTextView("Wifi Strength");
+                    setDistanceTextView((float) d);
+
                 }
 
             }
@@ -485,6 +481,18 @@ public class MainScreenActivity extends AppCompatActivity
             e.printStackTrace();
         }
 
+    }
+
+    public void setDistanceTextView(float distance) {
+        TextView tv1 = (TextView) findViewById(R.id.distanceText);
+        String s = String.format("%.2f", distance);
+
+        String dString = "Approx Distance: " + s + " meters";
+        tv1.setText(dString);
+    }
+    public void setMethodTextView(String method) {
+        TextView tv1 = (TextView) findViewById(R.id.textView3);
+        tv1.setText(method);
     }
 
     @Override
@@ -820,11 +828,8 @@ public class MainScreenActivity extends AppCompatActivity
                             if (a.BSSID.equals(wifiBSSID)) {
                                 double ditance = calculateDistance(a.level, a.frequency);
                                 if (ditance < d) {
-                                    TextView ds = (TextView) findViewById(R.id.distanceText);
-                                    String dd = "Approx Distance: " + d;
-                                    ds.setText(dd);
-                                    ds = (TextView) findViewById(R.id.textView3);
-                                    ds.setText("WiFi Strength");
+                                   setDistanceTextView((float)ditance);
+                                    setMethodTextView("WiFi Strength");
                                 }
                             }
 
@@ -997,7 +1002,6 @@ public class MainScreenActivity extends AppCompatActivity
                         setSearchStatus(true, 1);
                         if (mSensorManager != null)
                             mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
-                        m = (TextView) findViewById(R.id.textView);
                         m.setText("looking for location...");
                         mBound = true;
 
