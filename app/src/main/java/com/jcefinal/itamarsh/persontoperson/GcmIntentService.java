@@ -23,11 +23,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /*
- * This class responsible for treat of arriving GCM messages, using seperate thread
+ * This class responsible for treat of arriving GCM messages, using separate thread
  */
 public class GcmIntentService extends IntentService {
     private SharedPreferences memory;
     private SharedPreferences.Editor edit;
+    private String Session = null;
 
     public GcmIntentService() {
         super("GcmIntentService");
@@ -45,24 +46,35 @@ public class GcmIntentService extends IntentService {
         if (extras != null && !extras.isEmpty()) {  // has effect of unparcelling Bundle
             if (GoogleCloudMessaging.MESSAGE_TYPE_MESSAGE.equals(messageType)) {
                 String m = extras.getString("message", "empty");
-//                Log.i(Helper.CONNECTION_TAG, "Got message\nMessage: " + m);
+//                Log.d(Helper.CONNECTION_TAG, "Got message\nMessage: " + m);
                 if (m.compareTo("registered") == 0) {
-                    Log.i(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
+                    Log.d(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
                 } else {
+                    memory = getBaseContext().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
+//                    edit = memory.edit();
                     try {
                         JSONObject js = new JSONObject(m);
                         String str = js.getString("message");
-                        if (str.contains(",")) {
-                            sendMessage(str);
+                        if (js.has("session")) {
+                            Session = js.getString("session");
+                        }
+                        if (str.contains("your_location")) {
+                            wifiLocationeMessage(str);
+                        } else if (str.contains("distance")) {
+                            distanceMessage(str);
+                        } else if (str.contains("found_wifi")) {
+                            wifiListMessage(str);
                         } else if (str.contains("WIFI")) {
                             wifiMessage(str);
                         } else if (str.contains("UUID")) {
                             btMessage(str);
+                        } else if (str.contains(",")) {
+                            GPSMessage(str);
                         } else {
                             showNotification(extras.getString("message"));
                         }
                     } catch (JSONException e) {
-                        Log.i("bundle", "json exception");
+                        Log.e("bundle", "json exception");
                         e.printStackTrace();
                     }
                 }
@@ -72,8 +84,23 @@ public class GcmIntentService extends IntentService {
         GcmBroadcastReceiver.completeWakefulIntent(intent);
     }
 
+    private void distanceMessage(String str) {
+        Intent intent = new Intent(Helper.WIFI_DATA);
+        addSession(intent);
+        intent.putExtra("distance", str);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    //Function send broadcast to main activity, to treat session message
+    private void addSession(Intent i) {
+        if (Session != null)
+            i.putExtra("session", Session);
+    }
+
+    //Function send broadcast to main activity, to treat wifi message
     private void wifiMessage(String data) {
         Intent intent = new Intent(Helper.WIFI_DATA);
+        addSession(intent);
         intent.putExtra("wifi_info", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -81,14 +108,32 @@ public class GcmIntentService extends IntentService {
     //function to activate the Bluetooth receiver
     private void btMessage(String data) {
         Intent intent = new Intent(Helper.BT_DATA);
+        addSession(intent);
         intent.putExtra("bt_info", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     //Function send broadcast to main activity, to treat location message
-    private void sendMessage(String data) {
+    private void wifiListMessage(String data) {
         Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
-        intent.putExtra("message", data);
+        addSession(intent);
+        intent.putExtra("wifiList", data);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    //Function send broadcast to main activity, to treat wifi based location message
+    private void wifiLocationeMessage(String data) {
+        Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
+        addSession(intent);
+        intent.putExtra("wifiLocation", data);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    //Function send broadcast to main activity, to treat gps location message
+    private void GPSMessage(String data) {
+        Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
+        addSession(intent);
+        intent.putExtra("gpsMessage", data);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 

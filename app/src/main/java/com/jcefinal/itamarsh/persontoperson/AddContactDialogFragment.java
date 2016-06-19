@@ -66,8 +66,7 @@ public class AddContactDialogFragment extends DialogFragment {
 
                         if (phoneNum.isEmpty() || name.isEmpty())
                             Toast.makeText(getActivity(), "Do not leave empty fields!", Toast.LENGTH_LONG).show();
-                        else if (!phoneNum.matches(MobilePattern))
-                        {
+                        else if (!phoneNum.matches(MobilePattern)) {
                             Toast.makeText(getActivity(), "Phone number is not valid!", Toast.LENGTH_LONG).show();
                         }
                         else{

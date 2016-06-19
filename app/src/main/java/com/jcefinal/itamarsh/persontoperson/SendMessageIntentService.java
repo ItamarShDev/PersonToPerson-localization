@@ -23,11 +23,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 
-/**
- * Created by olesya on 28-Jan-16.
- */
 public class SendMessageIntentService extends IntentService {
-    private static final String SENDER_ID = "186698592995";
     private SharedPreferences memory;
     private GoogleCloudMessaging gcm;
     private Context context;
@@ -35,9 +31,7 @@ public class SendMessageIntentService extends IntentService {
     private RequestQueue queue;
     private Helper helper = new Helper();
 
-
-    public SendMessageIntentService()
-    {
+    public SendMessageIntentService() {
         super("SendMessageIntentService");
     }
 
@@ -47,15 +41,14 @@ public class SendMessageIntentService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
-        NotificationManager nm = (NotificationManager)getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
         nm.cancel(0);
         String op = intent.getStringExtra("operation");
         String to = intent.getStringExtra("to");
         String content = intent.getStringExtra("content");
 
-
         context = getApplicationContext();
-        String authorizedEntity = SENDER_ID; // Project id from Google Developer Console
+        String authorizedEntity = Helper.SENDER_ID; // Project id from Google Developer Console
         token = "";
 
         String scope = "GCM";
@@ -66,45 +59,41 @@ public class SendMessageIntentService extends IntentService {
             token = InstanceID.getInstance(context).getToken(authorizedEntity, scope);
 
         } catch (IOException ex) {
-            Log.d(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Failed to complete token refresh", ex);
+            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Failed to complete token refresh", ex);
             ex.printStackTrace();
         }
         prepareOperation(op, to, content);
     }
 
     /* POST to GCM server using volley library */
-    private void sendToServer(String op, JSONObject jo){
-        String serverAddr = Helper.SERVER_ADDR+op;
+    public void sendToServer(String op, JSONObject jo) {
+        final String serverAddr = Helper.SERVER_ADDR + op;
         queue = Volley.newRequestQueue(context);
         JsonObjectRequest request = new JsonObjectRequest(
                 Request.Method.POST,
                 serverAddr,
                 jo,
-                new Response.Listener<JSONObject>()
-                {
+                new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
                         try {
                             String res = response.getString("response");
-                        }
-                        catch (JSONException e)
-                        {
-                            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Error on response " + e.getMessage());
+
+                        } catch (JSONException e) {
+                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer - Error on response " + e.getMessage());
                         }
                     }
                 },
-                new Response.ErrorListener(){
+                new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Toast.makeText(context, "Got error", Toast.LENGTH_LONG).show();
-                        try{
-
-                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.toString());
+                        Toast.makeText(context, "Got error: " + error.getMessage(), Toast.LENGTH_LONG).show();
+                        try {
+                            error.getStackTrace();
+                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer Got " + error.networkResponse);
                             Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.getLocalizedMessage());
 
-                        }
-                        catch (NullPointerException e)
-                        {
+                        } catch (NullPointerException e) {
                             Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - Volley Error");
                         }
 
@@ -119,9 +108,8 @@ public class SendMessageIntentService extends IntentService {
         queue.add(request);
     }
 
-
     /* preparing json body for sending message to other device using GCM server  */
-    public void sendMessage(String to,String message){
+    public void sendMessage(String to, String message) {
         String op = "message";
         JSONObject jsonBody = new JSONObject();
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
@@ -131,12 +119,36 @@ public class SendMessageIntentService extends IntentService {
             jsonBody.put("to", to);
             jsonBody.put("message", message);
 
-        }
-        catch (JSONException e)
-        {
+        } catch (JSONException e) {
             Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
         }
         sendToServer(op, jsonBody);
+    }
+
+    public void sendMessage(String to, JSONObject message) {
+        String op = "message";
+        JSONObject jsonBody = new JSONObject();
+        memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
+        String myPhone = helper.encode(memory.getString("myphone", ""));
+        try {
+            jsonBody.put("from", myPhone);
+            jsonBody.put("to", to);
+            jsonBody.put("message", message);
+
+        } catch (JSONException e) {
+            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
+        }
+        sendToServer(op, jsonBody);
+    }
+    private void updateServer(String message) {
+        try {
+            String op = "get_location";
+            JSONObject json = new JSONObject(message);
+            sendToServer(op, json);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
     }
 
     /*preparing json body for registration to GCM server*/
@@ -145,17 +157,14 @@ public class SendMessageIntentService extends IntentService {
         SharedPreferences memory;
         memory = context.getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
         String hashString = helper.encode(memory.getString("myphone", ""));
-
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("user_id", token);
             jsonBody.put("id", hashString);
             jsonBody.put("username", memory.getString("myname", "almoni"));
 
-        }
-        catch (JSONException e)
-        {
-            Log.i(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
+        } catch (JSONException e) {
+            Log.d(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
         }
         sendToServer(op, jsonBody);
     }
@@ -167,26 +176,52 @@ public class SendMessageIntentService extends IntentService {
         JSONObject jsonBody = new JSONObject();
         try {
             jsonBody.put("contact", hashString);
-        }
-        catch (JSONException e)
-        {
+        } catch (JSONException e) {
             Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - json error" + e.getMessage());
         }
         sendToServer(op, jsonBody);
     }
 
     /* prepareOperation - preparing json body to send to server depending on operation required*/
-    public void prepareOperation(String op, String to, String message){
-        switch (op){
+    public void prepareOperation(String op, String to, String message) {
+        switch (op) {
             case "register":
                 registerToServer();
+                break;
+            case "wifi-message":
+                try {
+                    JSONObject jo = new JSONObject(message);
+                    sendMessage(to, jo);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
                 break;
             case "message":
                 sendMessage(to, message);
                 break;
             case "contact":
                 findContact(to);
+                break;
+            case "server":
+                updateServer(message);
+                break;
+            case "end":
+                endConnection(message);
+                break;
         }
     }
+
+    private void endConnection(String message) {
+        try {
+            String op = "close_session";
+            JSONObject json = new JSONObject();
+            json.put("session", message);
+            sendToServer(op, json);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+
 }
 

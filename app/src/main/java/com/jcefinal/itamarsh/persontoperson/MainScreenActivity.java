@@ -44,7 +44,10 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.telephony.NeighboringCellInfo;
 import android.telephony.SmsManager;
+import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -78,8 +81,13 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
-public class MainScreenActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
+public class MainScreenActivity extends AppCompatActivity
+        implements View.OnClickListener, View.OnLongClickListener, SensorEventListener {
     /*Define variables */
 
     private static final int RED = 2, BLUE = 0, PINK = 1, PLAY = 1, ADD = 0, PAUSE = 2;
@@ -92,8 +100,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     public int[] iconIntArray = {R.drawable.ic_add_white_24dp, R.drawable.ic_play_arrow_white_24dp, R.drawable.ic_pause_white_24dp};
     boolean play;
     boolean gpsOn, networkOn;
+    float latestAccuracy = 999999999;
     private ArrayList<String> mArrayAdapter;
-
+    private boolean wifiOn = false;
     private BroadcastReceiver mReceiver;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
@@ -115,23 +124,18 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     /* BR for Bluetooth*/
     private final BroadcastReceiver mBTReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
-            Log.d(Helper.BT_TAG, "Receiver On Receive");
 
             String action = intent.getAction();
             // When discovery finds a device
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                Log.d(Helper.BT_TAG, "Receiver found " + action);
                 // Get the BluetoothDevice object from the Intent
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // Add the name and address to an array adapter to show in a ListView
-                Log.d(Helper.BT_TAG, device.getName() + "\n" + device.getAddress());
                 if (!memory.getString("BT-UUID", "").equals("")) {
                     try {
-                        UUID uuid = UUID.fromString(memory.getString("BT-UUID", "").toString());
+                        UUID uuid = UUID.fromString(memory.getString("BT-UUID", ""));
                         for (ParcelUuid u : device.getUuids()) {
-                            Log.d(Helper.BT_TAG, "Receiver found looking on uuid " + u.toString());
                             if (u.getUuid().compareTo(uuid) == 0) {
-                                Log.d(Helper.BT_TAG, "Receiver found device with uuid " + u.toString());
                                 ConnectThread ct = new ConnectThread(device, uuid);
                                 ct.run();
                             }
@@ -141,13 +145,12 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     }
 
                     int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
-                    TextView btPower = (TextView) findViewById(R.id.textView3);
-                    btPower.setText("  RSSI: " + rssi + "dBm");
-//                    Toast.makeText(getApplicationContext(), "  RSSI: " + rssi + "dBm", Toast.LENGTH_SHORT).show();
+                    setMethodTextView("Bluetooth Strength");
                 }
             }
         }
     };
+    private WifiScanner ws = null;
     private BluetoothAdapter mBluetoothAdapter;
     private WifiManager wifi;
     private Location currentLocation, target;
@@ -186,6 +189,17 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             mBound = false;
         }
     };
+    /**************************************************************************************************/
+
+    private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int type = intent.getIntExtra("type", -1);
+            if (type > -1)
+                buildAlertMessageNoGps(type);
+        }
+    };
+    private float d = 99999;
     //****************************************************************
     //*        Treatment for notification with location
     //****************************************************************
@@ -196,6 +210,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 return;
             currentLocation = locationService.getLastLocation();
             if (flag) {
+                //initialize all sensors
                 mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
                 mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
                 mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
@@ -203,55 +218,58 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             }
             SharedPreferences.Editor edit = memory.edit();
             // Extract data included in the Intent
-            String message = intent.getStringExtra("message");
-            String btMessage = intent.getStringExtra("bt_info");
-            String wifiMessage = intent.getStringExtra("wifi_info");
-            if (btMessage != null) {
+            String distance = intent.getStringExtra("distance"); //got distance
+            String message = intent.getStringExtra("gpsMessage"); //got gps location
+            String btMessage = intent.getStringExtra("bt_info"); //got bluetooth info
+            String wifiMessage = intent.getStringExtra("wifi_info");//got wifi info
+            String session = intent.getStringExtra("session");//opens new session
+            String wifiLocation = intent.getStringExtra("wifiLocation");//got wifi based location
+            String wifiList = intent.getStringExtra("wifiList");//got wifi list
+            boolean hasWifis = wifiList != null && wifiList.contains("found_wifi");
+
+            if (session != null) {
+                edit.putString("session", session).apply();
+            }
+            if (distance != null) {
+                if (!wifiOn) {
+                    wifi();
+                    wifiOn = true;
+                }
+                blueToothAndWifi();
+            } else if (btMessage != null) {
                 btMessage = btMessage.split("UUID")[1];
                 edit.putString("BT-UUID", btMessage).apply();
-                Log.d(Helper.BT_TAG, "Receiver got uuid " + btMessage);
-                Toast.makeText(context, "UUID Got: " + btMessage, Toast.LENGTH_LONG).show();
 
             } else if (wifiMessage != null) {
+
                 wifiMessage = wifiMessage.split("WIFI ")[1];
                 edit.putString("WIFI-UUID", wifiMessage).apply();
-                Log.d(Helper.BT_TAG, "Receiver got wifi " + wifiMessage);
-                Toast.makeText(context, "WIFI Got: " + wifiMessage, Toast.LENGTH_LONG).show();
+                wifiScan(wifiMessage);
+            } else if (wifiList != null) {
+                triangulation(wifiList);
+            } else if (wifiLocation != null) {
 
-            } else if (message != null) {
 
-                float d = 0;
-                if (locationService.getLastLocation() != null) {// If current location set
-                    String location[] = message.split(",");
-                    String loc = "\nYour Location: \n" + String.format("%.2f", currentLocation.getLongitude()) + ","
-                            + String.format("%.2f", currentLocation.getLatitude());
-                    target.setLongitude(Float.valueOf(location[0]));
-                    target.setLatitude(Float.valueOf(location[1]));
-                    float l1 = Float.valueOf(location[0]);
-                    float l2 = Float.valueOf(location[1]);
-                    d = currentLocation.distanceTo(target);
-                    distanceAlgo(d);
-                    //Update friend's location
-                    String dtLoc = "Friend Location: " + String.format("%.2f", l1) + ',' + String.format("%.2f", l2) + "\nDistance: " +
-                            String.format("%.2f", d);
-                    TextView locationText = (TextView) findViewById(R.id.distanceText);
-                    locationText.setText(dtLoc);
-                    TextView m = (TextView) findViewById(R.id.textView);
-                    m.setText(loc);
+                try {
+                    JSONObject loc = new JSONObject(wifiLocation);
+                    JSONObject myLoc = loc.getJSONObject("your_location");
+                    JSONObject otherLoc = loc.getJSONObject("friend_location");
+                    selectLocationToShow(Helper.WIFI_SOURCE, myLoc, otherLoc);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                JSONObject jsonMessage = new JSONObject();
+                String location[] = message.split(",");
+                try {
+                    jsonMessage.put("lon", location[0]);
+                    jsonMessage.put("lat", location[1]);
+                    selectLocationToShow(Helper.GPS_SOURCE, null, jsonMessage);
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
             }
 
-        }
-    };
-    /**************************************************************************************************/
-
-    //BR for DIALOGS
-    private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            int type = intent.getIntExtra("type", -1);
-            if (type > -1)
-                buildAlertMessageNoGps(type);
         }
     };
 
@@ -264,9 +282,223 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         return (Math.atan2(dx, dy) * 180) / Math.PI;
     }
 
+    private void selectLocationToShow(int source, JSONObject myLoc, JSONObject otherLoc) throws JSONException {
+
+        switch (source) {
+            case Helper.GPS_SOURCE:
+                try {
+                    target.setLongitude(Float.valueOf(otherLoc.getString("lon")));
+                    target.setLatitude(Float.valueOf(otherLoc.getString("lat")));
+                    target.setAccuracy(currentLocation.getAccuracy());
+
+                    setMethodTextView("GPS");
+                    updateLocationView();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                break;
+            case Helper.WIFI_SOURCE:
+                float myAcc = Float.valueOf(myLoc.getString("accuracy"));
+                float otherAcc = Float.valueOf(otherLoc.getString("accuracy"));
+                //check if got real data
+                boolean myLocError = myLoc.getString("error") == null;
+                boolean otherLocError = otherLoc.getString("error") == null;
+                //update needed data
+                setMethodTextView("Public Wifi");
+
+                if (myLocError) {
+                    setBestLocation(myLoc);
+                }
+                if (otherLocError) {
+                    Log.i("ALGORITHM", "selectLocationToShow other location exist\n\t" + otherLoc.getString("error"));
+                    setTargetToWifi(otherLoc);
+                }
+                updateLocationView();
+                break;
+        }
+    }
+
+    private void setTargetToWifi(JSONObject loc) throws JSONException {
+        target.setLongitude(Float.valueOf(loc.getString("lon")));
+        target.setLatitude(Float.valueOf(loc.getString("lat")));
+        target.setAccuracy(Float.valueOf(loc.getString("accuracy")));
+
+    }
+
+    /**************************************************************************************************/
+    /*                                  BR for DIALOGS                                                */
+    private void setBestLocation(JSONObject loc) throws JSONException {
+
+        float locationAccuracy = currentLocation.getAccuracy();
+        float wifiAccuracy = Float.valueOf(loc.getString("accuracy"));
+        boolean smallerThan = locationAccuracy > wifiAccuracy;
+        if (smallerThan) {
+            float lon = Float.valueOf(loc.getString("lon"));
+            float lat = Float.valueOf(loc.getString("lat"));
+            currentLocation.setLongitude(lon);
+            currentLocation.setLatitude(lat);
+            currentLocation.setAccuracy(wifiAccuracy);
+        }
+    }
+
+    private void updateLocationView() {
+        d = currentLocation.distanceTo(target);
+        JSONObject js = new JSONObject();
+        try {
+            js.put("distance", d);
+            Helper.sendMessage(this, "message", memory.getString("to", ""), js.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        blueToothAndWifi();
+        //Update friend's location
+        setDistanceTextView(d);
+        float acc = (currentLocation.getAccuracy() + target.getAccuracy()) / 2;
+        setAccuracyTextView((int)acc);
+
+    }
+    public void setAccuracyTextView(int accuracy){
+        TextView m = (TextView) findViewById(R.id.textView);
+        String loc = "Accuracy: " + accuracy;
+        m.setText(loc);
+    }
+    /**
+     * function to get the wifis the from other end, and send both to server to get location
+     */
+    private void triangulation(String message) {
+        String addr = memory.getString("WIFI-UUID", "");//get UUID
+        List<ScanResult> resultList = wifi.getScanResults();//scan wifi
+        //needed JSONs
+        JSONArray jsonArray = new JSONArray();
+        JSONObject jo = new JSONObject();
+        JSONObject sendJson = new JSONObject();
+
+        try {
+            JSONObject tJo = new JSONObject(message);//create Json
+            sendJson.put("data2", tJo);//add to the new JSON
+            sendJson.put("from", memory.getString("to", ""));//add my phone
+            sendJson.put("to", helper.encode(memory.getString("myphone", "")));//who to send to
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        for (ScanResult a : resultList) {
+            JSONObject wifi = new JSONObject();//wifi JSON
+            try {//create each wifi a json
+                wifi.put("bssid", a.BSSID);
+                wifi.put("signal", a.level);
+                wifi.put("frequency", a.frequency);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) { //only from Marshmallow
+                    wifi.put("channel", a.channelWidth);
+                }
+                jsonArray.put(wifi);//insert to a list
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            if (!addr.equals("")) {
+                if (a.BSSID.equals(addr)) {
+                    //scheduled task to run wifi
+                    double d = calculateDistance(a.level, a.frequency);
+                    setMethodTextView("Wifi Strength");
+                    setDistanceTextView((float) d);
+
+                }
+
+            }
+        }
+        try {
+            /**
+             * Get Cellular Data
+             */
+            TelephonyManager tel = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            String networkOperator = tel.getNetworkOperator();
+
+            if (!TextUtils.isEmpty(networkOperator)) {
+                int mcc = Integer.parseInt(networkOperator.substring(0, 3));
+                int mnc = Integer.parseInt(networkOperator.substring(3));
+                String network = tel.getNetworkOperator();
+                int networkType = tel.getNetworkType();
+                String netType = "";
+                switch (networkType) {
+                    case 4:
+                        netType = "cdma";
+                        break;
+                    case 1:
+                        netType = "gsm";
+                        break;
+                    case 8:
+                        netType = "gsm";
+                        break;
+                    case 10:
+                        netType = "gsm";
+                        break;
+                    case 15:
+                        netType = "gsm";
+                        break;
+                    case 9:
+                        netType = "gsm";
+                        break;
+                    case 13:
+                        netType = "lte";
+                        break;
+                    case 3:
+                        netType = "wcdma";
+                        break;
+                    case 0:
+                        netType = "Unknown";
+                        break;
+                }
+                //add to JSON
+                jo.put("homeMobileCountryCode", mcc);
+                jo.put("homeMobileNetworkCode", mnc);
+                jo.put("carrier", network);
+                jo.put("radioType", netType);
+            }
+            //get cells ID
+            JSONArray cellList = new JSONArray();
+            List<NeighboringCellInfo> neighCells = tel.getNeighboringCellInfo();
+            for (int i = 0; i < neighCells.size(); i++) {
+                try {
+                    JSONObject cellObj = new JSONObject();
+                    NeighboringCellInfo thisCell = neighCells.get(i);
+                    cellObj.put("cellId", thisCell.getCid());
+                    cellList.put(cellObj);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            if (cellList.length() > 0) {
+                try {
+                    jo.put("cellTowers", cellList);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            jo.put("found_wifi", jsonArray);
+            sendJson.put("data", jo);
+            Helper.sendMessage(getBaseContext(), "server", "", sendJson.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void setDistanceTextView(float distance) {
+        TextView tv1 = (TextView) findViewById(R.id.distanceText);
+        String s = String.format("%.2f", distance);
+
+        String dString = "Approx Distance: " + s + " meters";
+        tv1.setText(dString);
+    }
+    public void setMethodTextView(String method) {
+        TextView tv1 = (TextView) findViewById(R.id.textView3);
+        tv1.setText(method);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main_screen);
         initViews();
         service = new Intent(this, LocationService.class);
@@ -293,7 +525,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
         fab.setOnLongClickListener(this);
         fab.setOnClickListener(this);
         tab.setupWithViewPager(mViewPager);
-
         //*************************************************************************
         // prompt for phone number and name only when application first installed *
         //*************************************************************************
@@ -331,9 +562,11 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     SharedPreferences.Editor edit = memory.edit();
                     edit.putString("to", to);//save recipient
                     edit.putString("bt_status", "server");//change bluetooth mode to server
-
                     edit.apply();
                     Helper.sendMessage(getApplicationContext(), "message", to, Helper.APPROVED);//send approval message
+
+                    ws = new WifiScanner(getApplicationContext());
+                    ws.run();
                 } else if (tabToOpen == 2) {
                     nm.cancel(1);
                     receiving = true;
@@ -341,10 +574,16 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 startService(service); //start and bind wifi service
                 bindService(service, mConnection, Context.BIND_AUTO_CREATE);
             } else if (action.equals(Helper.MODE_STOP)) {//if stop mode
+                if (ws != null)
+                    ws.stopSearch();
+                String session = memory.getString("session", "");
+                Helper.sendMessage(this, "end", "", session);
                 nm.cancel(2);//delete notification
                 ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
                 try {
+                    memory.edit().putString("WIFI-UUID", "").apply();
                     stopService(service); //stop wifi service
+                    ApManager.configApState(MainScreenActivity.this);
                     //unregister receivers
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
                     LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
@@ -414,13 +653,23 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
 
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
     /**
      * stopping the search mode
      */
     private void stopSearch() {
-
+        if (ws != null)
+            ws.stopSearch();
+        String session = memory.getString("session", "");
+        Helper.sendMessage(this, "end", "", session);
+        memory.edit().putString("WIFI-UUID", "").apply();
         try {
-            locationService.stopLocationServices();//stop location
+            if (locationService != null)
+                locationService.stopLocationServices();//stop location
             setSearchStatus(false, 1);//disable search
             receiving = false;
             stopService(service);//stop wifi
@@ -437,7 +686,8 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
             //disable receivers
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
             LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
-            ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
+            if (ApManager.isApOn(MainScreenActivity.this))
+                ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
             wifi.setWifiEnabled(true);
             try {
                 LocalBroadcastManager.getInstance(this).unregisterReceiver(mBTReceiver);//clse bt receiver
@@ -521,73 +771,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     }
 
 
-    /**
-     * enable mode depending on distance
-     *
-     * @param distance = the measured distance
-     */
-    private void distanceAlgo(float distance) {
-       /* if (distance < Helper.BT_DISTANCE) {
-            blueTooth();
-        } else*/
-        if (distance < Helper.WIFI_DISTANCE) {
-            wifi();
-        }
+    private void blueToothAndWifi() {
 
-    }
-
-    private void scan() {
-        wifi.startScan();
-        List<ScanResult> scan = wifi.getScanResults();
-        Log.d(Helper.WIFI_TAG, "results num " + scan.size());
-    }
-
-    private void wifi() {
-        mChannel = mManager.initialize(this, getMainLooper(), null);
-        String type = memory.getString("bt_status", "");
-
-        if (!wifi.isWifiEnabled()) {
-            if (!ApManager.isApOn(MainScreenActivity.this))
-                wifi.setWifiEnabled(true);
-        } else if (!ApManager.isApOn(MainScreenActivity.this)) {
-            if (type.equals("server")) {
-                if (!ApManager.isApOn(MainScreenActivity.this)) {
-                    if (Build.VERSION.SDK_INT > 22)
-                        if (!Settings.System.canWrite(getApplicationContext())) {
-                            Intent grantIntent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
-                            startActivity(grantIntent);
-                        } else {
-                            ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
-                            info = wifi.getConnectionInfo();
-                            String address = info.getBSSID();
-                            Log.d(Helper.WIFI_TAG, "WiFi Address " + address);
-                            Helper.sendMessage(this, "message", memory.getString("to", ""), "WIFI " + address);
-
-                        }
-                }
-            } else {
-
-                String addr = memory.getString("WIFI-UUID", "");
-                Log.d(Helper.WIFI_TAG, "Addr " + addr);
-                if (!addr.equals("")) {
-                    List<ScanResult> resultList = wifi.getScanResults();
-                    Log.i(Helper.WIFI_TAG, resultList.toString());
-                    for (ScanResult a : resultList) {
-                        Log.d(Helper.WIFI_TAG, "found " + a.BSSID);
-                        if (a.BSSID.equals(addr)) {
-                            Log.d(Helper.WIFI_TAG, "match " + a.SSID);
-                            Toast.makeText(context, "Wifi RSSI " + a.level, Toast.LENGTH_LONG).show();
-                        }
-                    }
-                }
-            }
-        }
-
-    }
-
-    private void blueTooth() {
         if (mBluetoothAdapter == null) {
-            Log.d(Helper.BT_TAG, "no bt");
             // Device does not support Bluetooth
         } else {
             //if bluetooth is on
@@ -603,16 +789,13 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     startActivityForResult(discoverableIntent, BT_SHOW);
                 }
                 String type = memory.getString("bt_status", "");
-                Log.d(Helper.BT_TAG, "found " + type);
                 if (type.equals("client")) {
                     // Register the BroadcastReceiver
                     IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
                     registerReceiver(mBTReceiver, filter); // Don't forget to unregister during onDestroy
                     mBluetoothAdapter.startDiscovery();
-
                 } else if (type.equals("server")) {
                     BlueToohServer bs = new BlueToohServer(getBaseContext());
-
                 }
                 Method getUuidsMethod = null;
                 try {
@@ -630,11 +813,72 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                     e.printStackTrace();
                 }
             } else { //if bluetooth is off
-                Log.d(Helper.BT_TAG, "disabled");
                 mBluetoothAdapter.enable();
             }
         }
     }
+
+    public void wifiScan(final String wifiBSSID) {
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        ScheduledFuture<?> result = scheduler.scheduleAtFixedRate
+                (new Runnable() {//run every 15 seconds
+                    public void run() {
+                        List<ScanResult> resultList = wifi.getScanResults();//get wifi around
+                        for (ScanResult a : resultList) {
+                            if (a.BSSID.equals(wifiBSSID)) {
+                                double ditance = calculateDistance(a.level, a.frequency);
+                                if (ditance < d) {
+                                   setDistanceTextView((float)ditance);
+                                    setMethodTextView("WiFi Strength");
+                                }
+                            }
+
+                        }
+                    }
+                }, 0, 7, TimeUnit.SECONDS);
+    }
+
+    /**
+     * function to calculate wifi distance between two devices
+     * using public Wifi routers
+     */
+    private void wifi() {
+
+        mChannel = mManager.initialize(this, getMainLooper(), null);
+        String type = memory.getString("bt_status", "");
+        if (wifi.isWifiEnabled())
+            if (!ApManager.isApOn(MainScreenActivity.this)) {
+                if (type.equals("server")) {
+                    if (!ApManager.isApOn(MainScreenActivity.this)) {
+                        if (Build.VERSION.SDK_INT > 22)
+                            if (!Settings.System.canWrite(getApplicationContext())) {
+                                Log.d(Helper.WIFI_TAG, "Server Mode - need permissions");
+                                Intent grantIntent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
+                                startActivity(grantIntent);
+                            } else {
+                                String address = ApManager.changeAPStateAndReturnSSID(MainScreenActivity.this); // change Ap state :boolean
+                                if (address.compareTo("Failed") != 0) {
+                                    Helper.sendMessage(this, "message", memory.getString("to", ""), "WIFI " + address);
+                                }
+                            }
+                    }
+                }
+            }
+
+    }
+
+    /**
+     * method to calculate approx distance
+     *
+     * @param signalLevelInDb - the RSSI
+     * @param freqInMHz       - the web frequency
+     * @return - approx distance
+     */
+    public double calculateDistance(double signalLevelInDb, double freqInMHz) {
+        double exp = (27.55 - (20 * Math.log10(freqInMHz)) + Math.abs(signalLevelInDb)) / 20.0;
+        return Math.pow(10.0, exp);
+    }
+
 
     @Override
     public void onResume() {
@@ -648,7 +892,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                 new IntentFilter(Helper.BT_DATA));
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter(Helper.WIFI_DATA));
-        Log.i("APP", "Registered On");
         if (mSensorManager != null)
             mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
     }
@@ -759,7 +1002,6 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                         setSearchStatus(true, 1);
                         if (mSensorManager != null)
                             mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
-                        m = (TextView) findViewById(R.id.textView);
                         m.setText("looking for location...");
                         mBound = true;
 
@@ -896,7 +1138,7 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
     // This function sending to GCM server list of contacts from phonebook and getting all registered friends,
     // adding them to list of contacts
     public void sendToServer(final int src, final ArrayList<String> phoneList, final ArrayList<String> names) {
-        String serverAddr = Helper.SERVER_ADDR + "/contacts";
+        String serverAddr = Helper.SERVER_ADDR + "contacts";
         context = this;
         RequestQueue queue = Volley.newRequestQueue(getBaseContext());
         ArrayList<String> list = new ArrayList<String>();
@@ -929,9 +1171,9 @@ public class MainScreenActivity extends AppCompatActivity implements View.OnClic
                         try {
                             dialog.cancel();
                             JSONArray result = response.getJSONArray("response");
-                            Log.d(TAG, "response is: " + result);
                             for (int i = 0; i < result.length(); i++) {
                                 String phone = result.get(i).toString().replace("\n", "").trim();
+
                                 for (int j = 0; j < phoneList.size(); j++) {
                                     if (phone.equals(helper.encode(phoneList.get(j)).trim())) {
                                         dal.addEntries(names.get(j), phoneList.get(j));

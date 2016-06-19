@@ -41,7 +41,7 @@ public class LocationService extends Service implements LocationListener {
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
         gpsOn = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
         networkOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-        Log.i(TAG, "GPS is " + gpsOn);
+
         if (!gpsOn) {
             showDialog(GPS_ON);
         }
@@ -53,9 +53,10 @@ public class LocationService extends Service implements LocationListener {
             currentLocation = locationManager.getLastKnownLocation(locationProvider);
             locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locListener);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locListener);
+            locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 0, 0, locListener);
 
         } catch (SecurityException s) {
-            Log.i(TAG, "Security Exception");
+            Log.e(TAG, "Security Exception");
 
         }
 
@@ -74,7 +75,7 @@ public class LocationService extends Service implements LocationListener {
         return mBinder;
     }
 
-    public Location getLastLocation(){
+    public Location getLastLocation() {
         return currentLocation;
     }
 
@@ -84,10 +85,9 @@ public class LocationService extends Service implements LocationListener {
         }
         locationManager.removeUpdates(this);
     }
+
     @Override
     public void onDestroy() {
-        Log.i(TAG, "OnDestroy");
-//        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         locListener = this;
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
@@ -99,8 +99,10 @@ public class LocationService extends Service implements LocationListener {
     @Override
     public void onLocationChanged(Location location) {
         currentLocation = location;
+        String type = memory.getString("bt_status", "");
         // Called when a new location is found by the network location provider.
-        Helper.sendMessage(getBaseContext(), "message", memory.getString("to", ""), location.getLongitude() + "," + location.getLatitude());
+        if (type.equals("server"))
+            Helper.sendMessage(getBaseContext(), "message", memory.getString("to", ""), location.getLongitude() + "," + location.getLatitude());
 
     }
 

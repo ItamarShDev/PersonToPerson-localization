@@ -36,20 +36,17 @@ public class BlueToohServer extends Thread {
     }
 
     public void run() {
-        Log.d(Helper.BT_TAG, "server in run()");
         BluetoothSocket socket = null;
         // Keep listening until exception occurs or a socket is returned
         while (true) {
             try {
-                Log.d(Helper.BT_TAG, "Server in accept");
                 socket = mmServerSocket.accept();
             } catch (IOException e) {
                 break;
             }
-            Log.i(Helper.BT_TAG, "accepted " + socket.isConnected());
+            Log.d(Helper.BT_TAG, "accepted " + socket.isConnected());
             // If a connection was accepted
             if (socket != null) {
-                Log.d(Helper.BT_TAG, "Server Got Socket Request");
                 //TODO Do work to manage the connection (in a separate thread)
 //                    manageConnectedSocket(socket);
                 try {
