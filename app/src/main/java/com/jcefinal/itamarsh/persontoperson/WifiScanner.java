@@ -2,9 +2,11 @@ package com.jcefinal.itamarsh.persontoperson;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pManager;
@@ -13,6 +15,8 @@ import android.telephony.NeighboringCellInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.Volley;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
 import org.json.JSONArray;
@@ -42,7 +46,9 @@ public class WifiScanner extends Thread {
     private ScheduledFuture<?> result;
     private WIfiListDBHelper wifiDB;
     private SQLiteDatabase db;
-
+    private Location current;
+    private Intent service;
+    private SendMessageIntentService sendMessageIS;
     public WifiScanner(Context c) {
         wifi = (WifiManager) c.getSystemService(Context.WIFI_SERVICE);
         mManager = (WifiP2pManager) c.getSystemService(Context.WIFI_P2P_SERVICE);
@@ -51,11 +57,13 @@ public class WifiScanner extends Thread {
         memory = c.getApplicationContext().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
         edit = memory.edit();
         wifiDB = new WIfiListDBHelper(context);
+        service = new Intent(c.getApplicationContext(), LocationService.class);
 
     }
 
     public void run() {
-
+        context.startService(service);
+        sendMessageIS = new SendMessageIntentService("");
         scheduler =
                 Executors.newSingleThreadScheduledExecutor();
         result = scheduler.scheduleAtFixedRate
@@ -66,7 +74,7 @@ public class WifiScanner extends Thread {
                             JSONArray json = new JSONArray();
                             JSONObject jo = new JSONObject();
 
-                            for (ScanResult a : resultList) {
+                            for (ScanResult a : resultList) {//cycle results
 
                                 JSONObject wifi = new JSONObject();
                                 try {
@@ -95,36 +103,7 @@ public class WifiScanner extends Thread {
                                     int mnc = Integer.parseInt(networkOperator.substring(3));
                                     String network = tel.getNetworkOperator();
                                     int networkType = tel.getNetworkType();
-                                    String netType = "";
-                                    switch (networkType) {
-                                        case 4:
-                                            netType = "cdma";
-                                            break;
-                                        case 1:
-                                            netType = "gsm";
-                                            break;
-                                        case 8:
-                                            netType = "gsm";
-                                            break;
-                                        case 10:
-                                            netType = "gsm";
-                                            break;
-                                        case 15:
-                                            netType = "gsm";
-                                            break;
-                                        case 9:
-                                            netType = "gsm";
-                                            break;
-                                        case 13:
-                                            netType = "lte";
-                                            break;
-                                        case 3:
-                                            netType = "wcdma";
-                                            break;
-                                        case 0:
-                                            netType = "Unknown";
-                                            break;
-                                    }
+                                    String netType = networkConversion(networkType);
 
                                     jo.put("homeMobileCountryCode", mcc);
                                     jo.put("homeMobileNetworkCode", mnc);
@@ -152,7 +131,7 @@ public class WifiScanner extends Thread {
                                     }
                                 }
                                 String toSend = jo.toString();
-                                Helper.sendMessage(context.getApplicationContext(), "wifi-message", memory.getString("to", ""), toSend);
+                                Helper.sendMessage(context.getApplicationContext(), sendMessageIS, "wifi-message", memory.getString("to", ""), toSend);
 
                             } catch (JSONException e) {
                                 e.printStackTrace();
@@ -162,6 +141,40 @@ public class WifiScanner extends Thread {
 
                 }, 0, 7, TimeUnit.SECONDS);
 
+    }
+
+    private String networkConversion(int networkType) {
+        String netType = "";
+        switch (networkType) {
+            case 4:
+                netType = "cdma";
+                break;
+            case 1:
+                netType = "gsm";
+                break;
+            case 8:
+                netType = "gsm";
+                break;
+            case 10:
+                netType = "gsm";
+                break;
+            case 15:
+                netType = "gsm";
+                break;
+            case 9:
+                netType = "gsm";
+                break;
+            case 13:
+                netType = "lte";
+                break;
+            case 3:
+                netType = "wcdma";
+                break;
+            case 0:
+                netType = "Unknown";
+                break;
+        }
+        return netType;
     }
 
     private boolean checkIfExistInDB(List<ScanResult> results) {

@@ -183,7 +183,9 @@ public class GcmIntentService extends IntentService {
                     approve.putExtra("loc", 1);
                     approve.setAction(Helper.MODE_APPROVE);
                     approve.putExtra("to", fromPhone);
-
+                    SharedPreferences.Editor edit = memory.edit();
+                    edit.putString("bt_status", "server");
+                    edit.apply();
                     stackBuilder.addParentStack(MainScreenActivity.class);
                     stackBuilder.addNextIntent(approve);
                     PendingIntent approvePendingIntent =
@@ -208,7 +210,6 @@ public class GcmIntentService extends IntentService {
                     nm.notify(0, builder.build());
 
                 } else if (m.equals(Helper.APPROVED)) { //got approved
-                    memory.edit().putString("bt_status", "client").apply();
                     startService(service);
                     //set click listener on notification
                     Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);

@@ -28,14 +28,12 @@ public class LocationService extends Service implements LocationListener {
     private SharedPreferences memory;
     private LocationListener locListener;
     private LocationManager locationManager;
-
     public LocationService() {
 
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         locListener = this;
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
@@ -101,8 +99,9 @@ public class LocationService extends Service implements LocationListener {
         currentLocation = location;
         String type = memory.getString("bt_status", "");
         // Called when a new location is found by the network location provider.
-        if (type.equals("server"))
-            Helper.sendMessage(getBaseContext(), "message", memory.getString("to", ""), location.getLongitude() + "," + location.getLatitude());
+        if (type.equals("server")){
+            Helper.sendMessage(getBaseContext(),null,  "message", memory.getString("to", ""), location.getLongitude() + "," + location.getLatitude());
+        }
 
     }
 

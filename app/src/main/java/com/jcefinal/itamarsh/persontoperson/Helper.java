@@ -35,10 +35,19 @@ public class Helper {
             MODE_STOP = "stop_search",
             MESSAGE_RECEIVER = "my-event",
             SHOW_DIALOG = "show-dialog";
+    private SendMessageIntentService sm;
+
+    public void updateSendMessage(SendMessageIntentService s) {
+        this.sm = s;
+    }
 
     //This function call to send message intent service with arguments that was sent to function
-    public static void sendMessage(Context context, String op, String to, String content) {
-        Intent msgIntent = new Intent(context, SendMessageIntentService.class);
+    public static void sendMessage(Context context, SendMessageIntentService sendMessageIS, String op, String to, String content) {
+        Intent msgIntent;
+        if (sendMessageIS == null)
+            msgIntent = new Intent(context, SendMessageIntentService.class);
+        else
+            msgIntent = new Intent(context, sendMessageIS.getClass());
         msgIntent.putExtra("operation", op);
         msgIntent.putExtra("to", to);
         msgIntent.putExtra("content", content);
@@ -46,18 +55,16 @@ public class Helper {
     }
 
     /* This function responsible for encoding string to SHA-256*/
-    public String encode(String num)
-    {
+    public String encode(String num) {
         String hashString = "";
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
 
             md.update(num.getBytes());
             byte[] digest = md.digest();
-            hashString =  Base64.encodeToString(digest, Base64.DEFAULT);
+            hashString = Base64.encodeToString(digest, Base64.DEFAULT);
+        } catch (NoSuchAlgorithmException e) {
         }
-        catch (NoSuchAlgorithmException e)
-        {}
         return hashString;
     }
 }

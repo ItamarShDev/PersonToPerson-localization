@@ -7,6 +7,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.Volley;
+
 import java.io.IOException;
 import java.util.UUID;
 
@@ -16,6 +19,8 @@ import java.util.UUID;
 public class BlueToohServer extends Thread {
     private static final UUID MY_UUID = UUID.randomUUID();
     private final BluetoothServerSocket mmServerSocket;
+    private final RequestQueue queue;
+    private final SendMessageIntentService sendMessageIS;
     BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     private SharedPreferences memory;
 
@@ -24,7 +29,10 @@ public class BlueToohServer extends Thread {
         // Use a temporary object that is later assigned to mmServerSocket,
         // because mmServerSocket is final
         Log.d(Helper.BT_TAG, "In Server with " + MY_UUID);
-        Helper.sendMessage(c, "message", memory.getString("to", ""), "UUID " + MY_UUID);
+        queue = Volley.newRequestQueue(c);
+        sendMessageIS = new SendMessageIntentService("");
+
+        Helper.sendMessage(c,sendMessageIS, "message", memory.getString("to", ""), "UUID " + MY_UUID);
         BluetoothServerSocket tmp = null;
 
         try {

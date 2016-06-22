@@ -87,7 +87,6 @@ public class SendMessageIntentService extends IntentService {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Toast.makeText(context, "Got error: " + error.getMessage(), Toast.LENGTH_LONG).show();
                         try {
                             error.getStackTrace();
                             Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer Got " + error.networkResponse);
