@@ -32,6 +32,13 @@ public class LocationService extends Service implements LocationListener {
 
     }
 
+    /**
+     * start location updates
+     * @param intent
+     * @param flags
+     * @param startId
+     * @return
+     */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);

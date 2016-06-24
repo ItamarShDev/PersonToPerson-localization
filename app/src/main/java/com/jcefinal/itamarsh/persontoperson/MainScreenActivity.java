@@ -138,18 +138,12 @@ public class MainScreenActivity extends AppCompatActivity
     private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
-    /**************************************************************************************************/
-/*                                 BROADCAST RECEIVERS                                            */
     private boolean receiving = false;
     private SendMessageIntentService sendMessageIS;
     private RequestQueue queue;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        setContentView(R.layout.activity_main_screen);
-        initViews();
+    //init the main data needed for the onCreate
+    private void initData() {
         service = new Intent(this, LocationService.class);
         memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
         mBound = false;
@@ -163,22 +157,26 @@ public class MainScreenActivity extends AppCompatActivity
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         queue = Volley.newRequestQueue(context);
         sendMessageIS = new SendMessageIntentService("");
-
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the activity.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
-        mSectionsPagerAdapter.addFragment(new PlaceholderFragment());
-        mSectionsPagerAdapter.addFragment(new PlaceholderFragment());
-        // Set up the ViewPager with the sections adapter.
-        mViewPager.setAdapter(mSectionsPagerAdapter);
         target = new Location("");
-        //FLOATING BUTTON
-        fab.setOnLongClickListener(this);
-        fab.setOnClickListener(this);
-        tab.setupWithViewPager(mViewPager);
-        //*************************************************************************
-        // prompt for phone number and name only when application first installed *
-        //*************************************************************************
+
+    }
+
+    //Initialize views
+    private void initViews() {
+        mViewPager = (ViewPager) findViewById(R.id.container);
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        fab = (FloatingActionButton) findViewById(R.id.fab);
+        tab = (TabLayout) findViewById(R.id.tabs);
+        cursorListView = (ListView) findViewById(R.id.cursorListView);
+        compassView = (CompassView) findViewById(R.id.myView);
+
+    }
+
+    private void getPhoneNumber() {
+        /*************************************************************************/
+        /*prompt for phone number and name only when application first installed */
+        /*************************************************************************/
         if (memory.getString("myphone", "").isEmpty()) {
             FirstPageDialog alert = new FirstPageDialog();
             alert.setCancelable(false);
@@ -193,6 +191,111 @@ public class MainScreenActivity extends AppCompatActivity
         } else {
             Helper.sendMessage(getBaseContext(), sendMessageIS, Helper.REGISTER, null, null); //register with number and name that saved in SP
         }
+    }
+    private void handleNotificationOpen(int tabToOpen,  String action) {
+        NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        if (action.equals(Helper.MODE_APPROVE)) { // make sure action is approve
+            m = (TextView) findViewById(R.id.textView);
+            mViewPager.setCurrentItem(1);
+            setSearchStatus(true, 1);
+            setMessage(1);
+            if (tabToOpen == 1) {//when approving request
+                nm.cancel(0);
+                String to = i.getStringExtra("to");
+                SharedPreferences.Editor edit = memory.edit();
+                edit.putString("to", to);//save recipient
+                edit.putString("bt_status", "server");//change bluetooth mode to server
+                edit.apply();
+                Helper.sendMessage(getApplicationContext(), sendMessageIS, "message", to, Helper.APPROVED);//send approval message
+
+                ws = new WifiScanner(getApplicationContext());
+                ws.run();
+            } else if (tabToOpen == 2) {
+                nm.cancel(1);
+                receiving = true;
+            }
+            startService(service); //start and bind GPS service
+            bindService(service, mConnection, Context.BIND_AUTO_CREATE);
+        } else if (action.equals(Helper.MODE_STOP)) {//if stop mode
+            if (ws != null)
+                ws.stopSearch();
+            String session = memory.getString("session", "");
+            Helper.sendMessage(this, sendMessageIS, "end", "", session);
+            nm.cancel(2);//delete notification
+            ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
+            try {
+                memory.edit().putString("WIFI-UUID", "").apply();
+                stopService(service); //stop GPS service
+                ApManager.configApState(MainScreenActivity.this);
+                //unregister receivers
+                LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
+                LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
+                //disable search mode
+                setSearchStatus(false, 0);
+                receiving = false;
+                if (mBluetoothAdapter.isEnabled()) { //if bt enabled, close it
+                    mBluetoothAdapter.disable();
+                }
+
+                Toast.makeText(this, "Search stopped", Toast.LENGTH_SHORT).show();
+            } catch (SecurityException e) {
+                Log.e("LOCATION", e.toString());
+            }
+        }
+    }
+    private void handleContactsReading() {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) { //android 5+ permission handling
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.READ_CONTACTS)
+                    != PackageManager.PERMISSION_GRANTED) {
+
+                // Should we show an explanation?
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.READ_CONTACTS)) {
+
+                    // Show an explanation to the user *asynchronously* -- don't block
+                    // this thread waiting for the user's response! After the user
+                    // sees the explanation, try again to request the permission.
+
+                } else {
+
+                    // No explanation needed, we can request the permission.
+
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.READ_CONTACTS},
+                            Helper.MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+
+                    // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+                    // app-defined int constant. The callback method gets the
+                    // result of the request.
+                }
+            } else {
+                readContacts();
+            }
+        } else
+            readContacts();
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        setContentView(R.layout.activity_main_screen);
+        initViews();// initial the views
+        initData(); // set all the needed vars
+
+        // Create the adapter that will return a fragment for each of the three
+        // primary sections of the activity.
+        mSectionsPagerAdapter.addFragment(new PlaceholderFragment());
+        mSectionsPagerAdapter.addFragment(new PlaceholderFragment());
+        // Set up the ViewPager with the sections adapter.
+        mViewPager.setAdapter(mSectionsPagerAdapter);
+        //FLOATING BUTTON
+        fab.setOnLongClickListener(this);
+        fab.setOnClickListener(this);
+        tab.setupWithViewPager(mViewPager);
+        // get phone number from memory or user
+        getPhoneNumber();
 
         /***************************************************
          * Treatment for opening activity from notification *
@@ -201,86 +304,9 @@ public class MainScreenActivity extends AppCompatActivity
         String action = i.getAction();
         int tabToOpen = i.getIntExtra("loc", -1);
         if (tabToOpen != -1) { //If was opened from Notification, extra will be given
-            NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
-            if (action.equals(Helper.MODE_APPROVE)) { // make sure action is approve
-                m = (TextView) findViewById(R.id.textView);
-                mViewPager.setCurrentItem(1);
-                setSearchStatus(true, 1);
-                setMessage(1);
-                if (tabToOpen == 1) {//when approving request
-                    nm.cancel(0);
-                    String to = i.getStringExtra("to");
-                    SharedPreferences.Editor edit = memory.edit();
-                    edit.putString("to", to);//save recipient
-                    edit.putString("bt_status", "server");//change bluetooth mode to server
-                    edit.apply();
-                    Helper.sendMessage(getApplicationContext(), sendMessageIS, "message", to, Helper.APPROVED);//send approval message
-
-                    ws = new WifiScanner(getApplicationContext());
-                    ws.run();
-                } else if (tabToOpen == 2) {
-                    nm.cancel(1);
-                    receiving = true;
-                }
-                startService(service); //start and bind GPS service
-                bindService(service, mConnection, Context.BIND_AUTO_CREATE);
-            } else if (action.equals(Helper.MODE_STOP)) {//if stop mode
-                if (ws != null)
-                    ws.stopSearch();
-                String session = memory.getString("session", "");
-                Helper.sendMessage(this, sendMessageIS, "end", "", session);
-                nm.cancel(2);//delete notification
-                ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
-                try {
-                    memory.edit().putString("WIFI-UUID", "").apply();
-                    stopService(service); //stop GPS service
-                    ApManager.configApState(MainScreenActivity.this);
-                    //unregister receivers
-                    LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
-                    LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
-                    //disable search mode
-                    setSearchStatus(false, 0);
-                    receiving = false;
-                    if (mBluetoothAdapter.isEnabled()) { //if bt enabled, close it
-                        mBluetoothAdapter.disable();
-                    }
-
-                    Toast.makeText(this, "Search stopped", Toast.LENGTH_SHORT).show();
-                } catch (SecurityException e) {
-                    Log.e("LOCATION", e.toString());
-                }
-            }
+            handleNotificationOpen(tabToOpen, action);
         } else {
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) { //android 5+ permission handling
-                if (ContextCompat.checkSelfPermission(this,
-                        Manifest.permission.READ_CONTACTS)
-                        != PackageManager.PERMISSION_GRANTED) {
-
-                    // Should we show an explanation?
-                    if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                            Manifest.permission.READ_CONTACTS)) {
-
-                        // Show an explanation to the user *asynchronously* -- don't block
-                        // this thread waiting for the user's response! After the user
-                        // sees the explanation, try again to request the permission.
-
-                    } else {
-
-                        // No explanation needed, we can request the permission.
-
-                        ActivityCompat.requestPermissions(this,
-                                new String[]{Manifest.permission.READ_CONTACTS},
-                                Helper.MY_PERMISSIONS_REQUEST_READ_CONTACTS);
-
-                        // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
-                        // app-defined int constant. The callback method gets the
-                        // result of the request.
-                    }
-                } else {
-                    readContacts();
-                }
-            } else
-                readContacts();
+          handleContactsReading();
         }
 
         //********************* Tabs Listener  ******************************
@@ -304,7 +330,12 @@ public class MainScreenActivity extends AppCompatActivity
 
     }
 
-    /* BR for Bluetooth*/
+
+    /**************************************************************************************************/
+    /*                                 BROADCAST RECEIVERS                                            */
+    /**************************************************************************************************/
+
+    /* BR for Bluetooth */
     private final BroadcastReceiver mBTReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
 
@@ -333,27 +364,6 @@ public class MainScreenActivity extends AppCompatActivity
             }
         }
     };
-    /**
-     * Defines callbacks for service binding, passed to bindService()
-     */
-    private ServiceConnection mConnection = new ServiceConnection() {
-
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            // We've bound to LocalService, cast the IBinder and get LocalService instance
-            LocationService.LocalBinder binder = (LocationService.LocalBinder) service;
-            locationService = binder.getService();
-            mBound = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-            mBound = false;
-        }
-    };
-    /**************************************************************************************************/
-
     private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -433,6 +443,27 @@ public class MainScreenActivity extends AppCompatActivity
 
         }
     };
+
+    /**
+     * Defines callbacks for service binding, passed to bindService()
+     */
+    private ServiceConnection mConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            LocationService.LocalBinder binder = (LocationService.LocalBinder) service;
+            locationService = binder.getService();
+            mBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mBound = false;
+        }
+    };
+
 
     //Function to calculate angle from (x,y) of 2 points
     private static double calculateAngle(double x1, double y1, double x2,
@@ -1275,16 +1306,6 @@ public class MainScreenActivity extends AppCompatActivity
         cur.close();
     }
 
-    //Initialize views
-    private void initViews() {
-        mViewPager = (ViewPager) findViewById(R.id.container);
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        fab = (FloatingActionButton) findViewById(R.id.fab);
-        tab = (TabLayout) findViewById(R.id.tabs);
-        cursorListView = (ListView) findViewById(R.id.cursorListView);
-        compassView = (CompassView) findViewById(R.id.myView);
-
-    }
 
     //Function to update contacts list after adding to DB.
     private void getContacts() {

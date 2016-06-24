@@ -35,11 +35,6 @@ public class Helper {
             MODE_STOP = "stop_search",
             MESSAGE_RECEIVER = "my-event",
             SHOW_DIALOG = "show-dialog";
-    private SendMessageIntentService sm;
-
-    public void updateSendMessage(SendMessageIntentService s) {
-        this.sm = s;
-    }
 
     //This function call to send message intent service with arguments that was sent to function
     public static void sendMessage(Context context, SendMessageIntentService sendMessageIS, String op, String to, String content) {

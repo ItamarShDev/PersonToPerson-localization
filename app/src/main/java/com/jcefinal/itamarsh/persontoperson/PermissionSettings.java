@@ -1,4 +1,5 @@
-package com.jcefinal.itamarsh.persontoperson; /**
+package com.jcefinal.itamarsh.persontoperson;
+/**
  * Created by itamar on 14-Dec-15.
  */
 
@@ -7,6 +8,9 @@ import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.support.v4.app.ActivityCompat;
 
+/**
+ * manages the permissions
+ */
 public class PermissionSettings {
 
         private final int PERMISSION_REQUEST = 0;

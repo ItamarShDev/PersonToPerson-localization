@@ -15,8 +15,6 @@ import android.telephony.NeighboringCellInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.Volley;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
 import org.json.JSONArray;
@@ -49,23 +47,31 @@ public class WifiScanner extends Thread {
     private Location current;
     private Intent service;
     private SendMessageIntentService sendMessageIS;
+
+    //constructor
     public WifiScanner(Context c) {
+        // init services
         wifi = (WifiManager) c.getSystemService(Context.WIFI_SERVICE);
         mManager = (WifiP2pManager) c.getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(c, c.getMainLooper(), null);
-        this.context = c;
+        this.context = c; //save application context
+        // read from memory
         memory = c.getApplicationContext().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
-        edit = memory.edit();
+        //create wifi helper
         wifiDB = new WIfiListDBHelper(context);
+        // create service intent
         service = new Intent(c.getApplicationContext(), LocationService.class);
 
     }
 
+    /**
+     * scanner main method
+     */
     public void run() {
-        context.startService(service);
-        sendMessageIS = new SendMessageIntentService("");
-        scheduler =
-                Executors.newSingleThreadScheduledExecutor();
+        context.startService(service);//start location service
+        sendMessageIS = new SendMessageIntentService("");//create send message reference
+        //prepare to run in scheduled periods
+        scheduler = Executors.newSingleThreadScheduledExecutor();
         result = scheduler.scheduleAtFixedRate
                 (new Runnable() {//run every 15 seconds
                     public void run() {
@@ -75,7 +81,7 @@ public class WifiScanner extends Thread {
                             JSONObject jo = new JSONObject();
 
                             for (ScanResult a : resultList) {//cycle results
-
+                                //save to JSON
                                 JSONObject wifi = new JSONObject();
                                 try {
                                     wifi.put("bssid", a.BSSID);
@@ -87,7 +93,7 @@ public class WifiScanner extends Thread {
                                     } else {
                                         addWifi(a.BSSID, a.level, -1, a.frequency);
                                     }
-                                    json.put(wifi);
+                                    json.put(wifi);//save to main json
                                 } catch (JSONException e) {
                                     e.printStackTrace();
                                 }
@@ -143,56 +149,73 @@ public class WifiScanner extends Thread {
 
     }
 
+    /**
+     * returns the string by number given from OS
+     *
+     * @param networkType - the network type represented with a constant int
+     * @return a string represents the type
+     */
     private String networkConversion(int networkType) {
+
         String netType = "";
         switch (networkType) {
-            case 4:
-                netType = "cdma";
+            case 0:
+                netType = "Unknown";
                 break;
             case 1:
                 netType = "gsm";
                 break;
+            case 3:
+                netType = "wcdma";
+                break;
+            case 4:
+                netType = "cdma";
+                break;
             case 8:
-                netType = "gsm";
-                break;
-            case 10:
-                netType = "gsm";
-                break;
-            case 15:
                 netType = "gsm";
                 break;
             case 9:
                 netType = "gsm";
                 break;
+            case 10:
+                netType = "gsm";
+                break;
             case 13:
                 netType = "lte";
                 break;
-            case 3:
-                netType = "wcdma";
-                break;
-            case 0:
-                netType = "Unknown";
+            case 15:
+                netType = "gsm";
                 break;
         }
         return netType;
     }
 
+    /**
+     * check if the scanned wifi list is already in db
+     *
+     * @param results the scannes networks
+     * @return true if exist
+     */
     private boolean checkIfExistInDB(List<ScanResult> results) {
+        //init
         db = wifiDB.getReadableDatabase();
         Cursor c = getDB();
         int count = c.getCount();
         boolean ret = true;
+        //create comparator
         Comparator<ScanResult> comparator = new Comparator<ScanResult>() {
             @Override
             public int compare(ScanResult lhs, ScanResult rhs) {
+                //mark equals or not
                 return ((lhs.BSSID.compareTo(rhs.BSSID) < 0) ? -1 : lhs.BSSID.equals(rhs.BSSID) ? 0 : 1);
             }
         };
-        Collections.sort(results, comparator);
+        Collections.sort(results, comparator);//sort by MAC
+        //if not the same length, not equal
         if (results.size() != count) {
             ret = false;
         } else {
-            try {
+            try {//iterate through all the list and compare
                 while (c.moveToNext()) {
                     ScanResult s = results.get(c.getPosition());
                     if (s.level != c.getInt(0)) {
@@ -206,8 +229,8 @@ public class WifiScanner extends Thread {
                 c.close();
             }
         }
-        if (!ret)
-            wifiDB.reserDb(db);
+        if (!ret)//if not the same, reset the db
+            wifiDB.resetDb(db);
         return ret;
     }
 
@@ -256,10 +279,13 @@ public class WifiScanner extends Thread {
         return newRowId;
     }
 
+    /**
+     * stop wifi search
+     */
     public void stopSearch() {
         result.cancel(true);
         db = wifiDB.getWritableDatabase();
-        wifiDB.reserDb(db);
+        wifiDB.resetDb(db);
         wifiDB.close();
     }
 }
