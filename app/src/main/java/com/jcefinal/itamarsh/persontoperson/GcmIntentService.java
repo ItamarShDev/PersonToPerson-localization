@@ -26,11 +26,25 @@ import org.json.JSONObject;
  * This class responsible for treat of arriving GCM messages, using separate thread
  */
 public class GcmIntentService extends IntentService {
+    private static final int APPROVE_TYPE = 1, APPROVED_TYPE = 2, STOP_TYPE = 3;
+    private static final int SEARCH_REFUSED = 3, SEARCH_STOPPED = 2, SEARCH_APPROVED = 1, NOTIFICATION = 0;
     private SharedPreferences memory;
     private SharedPreferences.Editor edit;
     private String Session = null;
+    private Intent service, approve, refuse;
+    private Context context;
+    private TaskStackBuilder stackBuilder;
+    private NotificationCompat.Builder builder;
+    private String from, messageStr, fromPhone;
+    private NotificationManager nm;
+    private NotificationCompat.InboxStyle inboxStyle;
+    private PendingIntent approvePendingIntent, refusePendingIntent;
+    private DAL dal;
+    private JSONObject responseJSON;
+
 
     public GcmIntentService() {
+
         super("GcmIntentService");
     }
 
@@ -45,13 +59,12 @@ public class GcmIntentService extends IntentService {
 
         if (extras != null && !extras.isEmpty()) {  // has effect of unparcelling Bundle
             if (GoogleCloudMessaging.MESSAGE_TYPE_MESSAGE.equals(messageType)) {
+                memory = getApplication().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
+                edit = memory.edit();
                 String m = extras.getString("message", "empty");
-//                Log.d(Helper.CONNECTION_TAG, "Got message\nMessage: " + m);
                 if (m.compareTo("registered") == 0) {
                     Log.d(Helper.CONNECTION_TAG, "Registration to GCM server completed successfully");
                 } else {
-                    memory = getBaseContext().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
-//                    edit = memory.edit();
                     try {
                         JSONObject js = new JSONObject(m);
                         String str = js.getString("message");
@@ -137,34 +150,50 @@ public class GcmIntentService extends IntentService {
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
+    private void stopMessage() {
+        Log.d("TEST", "in stopMessage");
+        Intent intent = new Intent(Helper.MESSAGE_RECEIVER);
+        intent.putExtra("stop", Helper.STOP);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
     //Function show's notification and act depending on it's kind
     protected void showNotification(final String message) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
-                Context c = getBaseContext();
-                String from = "", m = "", fromPhone = "";
-                try {
-                    JSONObject responseJSON;
-                    DAL dal = new DAL(getBaseContext());
+                //init needed vars
+                context = getBaseContext();
+                nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                inboxStyle = new NotificationCompat.InboxStyle();
+                approve = new Intent(getBaseContext(), MainScreenActivity.class);
+                refuse = new Intent(getBaseContext(), SendMessageIntentService.class);
+                // init message strings
+                from = "";
+                messageStr = "";
+                fromPhone = "";
 
-                    responseJSON = new JSONObject(message);
+                try { //read response
+                    dal = new DAL(getBaseContext()); //create DAL
+                    responseJSON = new JSONObject(message); //convert message to JSON
+                    //save the needed strings
+                    String s = responseJSON.getString("session");
+                    Log.d("SESSION", "Got "+s);
+                    edit.putString("session", s).apply();
                     fromPhone = responseJSON.getString("from");
                     from = dal.getName(fromPhone);
-                    m = responseJSON.getString("message");
-                    memory = getApplication().getSharedPreferences("currentLoc", Context.MODE_PRIVATE);
-                    edit = memory.edit();
+                    messageStr = responseJSON.getString("message");
+                    //save to shared memory
                     edit.putString("to", fromPhone);
                     edit.apply();
 
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
-                Intent service = new Intent(getApplicationContext(), LocationService.class);
+                //intent to opening the location service
+                service = new Intent(getApplicationContext(), LocationService.class);
 
                 //Prepare notification builder
-
-                NotificationCompat.Builder builder = new NotificationCompat.Builder(c);
+                builder = new NotificationCompat.Builder(context);
                 builder.setDefaults(Notification.DEFAULT_ALL);
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                     Bitmap bm = BitmapFactory.decodeResource(getResources(), R.drawable.icon);
@@ -174,90 +203,130 @@ public class GcmIntentService extends IntentService {
                     builder.setSmallIcon(R.drawable.icon);
                 }
                 builder.setContentTitle("Find Your Friend");
-                builder.setContentText(from + ": " + m);
+                builder.setContentText(from + ": " + messageStr);
                 builder.setAutoCancel(true);
-                TaskStackBuilder stackBuilder = TaskStackBuilder.create(getBaseContext());
-                if (m.equals(Helper.REQUEST)) { //got request
-                    //set click listener on approve button
-                    Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
-                    approve.putExtra("loc", 1);
-                    approve.setAction(Helper.MODE_APPROVE);
-                    approve.putExtra("to", fromPhone);
-                    SharedPreferences.Editor edit = memory.edit();
-                    edit.putString("bt_status", "server");
-                    edit.apply();
-                    stackBuilder.addParentStack(MainScreenActivity.class);
-                    stackBuilder.addNextIntent(approve);
-                    PendingIntent approvePendingIntent =
-                            stackBuilder.getPendingIntent(0, PendingIntent.FLAG_CANCEL_CURRENT);
-
-                    builder.addAction(0, Helper.MODE_APPROVE, approvePendingIntent);
-
-                    //set click listener on refuse button
-                    Intent refuse = new Intent(getBaseContext(), SendMessageIntentService.class);
-                    refuse.setAction(Helper.MODE_REFUSE);
-                    refuse.putExtra("operation", "message");
-                    refuse.putExtra("to", fromPhone);
-                    refuse.putExtra("content", Helper.REFUSE);
-                    stackBuilder.addNextIntent(refuse);
-
-                    PendingIntent refusePendingIntent =
-                            PendingIntent.getService(getBaseContext(), 2, refuse, PendingIntent.FLAG_CANCEL_CURRENT);
-                    builder.setPriority(Notification.PRIORITY_HIGH);
-
-                    builder.addAction(0, Helper.MODE_REFUSE, refusePendingIntent);
-                    NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-                    nm.notify(0, builder.build());
-
-                } else if (m.equals(Helper.APPROVED)) { //got approved
-                    startService(service);
-                    //set click listener on notification
-                    Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
-                    approve.putExtra("loc", 2);
-                    approve.setAction(Helper.MODE_APPROVE);
-                    SharedPreferences.Editor edit = memory.edit();
-                    edit.putString("bt_status", "client");
-                    edit.apply();
-                    stackBuilder.addParentStack(MainScreenActivity.class);
-                    stackBuilder.addNextIntent(approve);
-                    PendingIntent approvePendingIntent =
-                            stackBuilder.getPendingIntent(1, PendingIntent.FLAG_CANCEL_CURRENT);
-                    builder.setContentIntent(approvePendingIntent);
-                    NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-                    nm.notify(1, builder.build());
-                } else if (m.equals(Helper.REFUSE)) {
-                    //set click listener on notification
-                    NotificationCompat.InboxStyle inboxStyle =
-                            new NotificationCompat.InboxStyle();
-                    inboxStyle.setBigContentTitle("Search Refused");
-                    inboxStyle.addLine("From: " + from);
-                    inboxStyle.addLine(m);
-                    builder.setStyle(inboxStyle);
-                    stackBuilder.addParentStack(MainScreenActivity.class);
-                    NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-                    nm.notify(1, builder.build());
-                } else if (m.equals(Helper.STOP_SEARCH)) {
-                    getApplicationContext().stopService(service);
-                    //set click listener on notification
-                    NotificationCompat.InboxStyle inboxStyle =
-                            new NotificationCompat.InboxStyle();
-                    inboxStyle.setBigContentTitle("Search Stopped");
-                    inboxStyle.addLine("From: " + from);
-                    inboxStyle.addLine(Helper.SEARCH_STOPPED);
-                    builder.setStyle(inboxStyle);
-                    Intent approve = new Intent(getBaseContext(), MainScreenActivity.class);
-                    approve.putExtra("loc", 3);
-                    approve.setAction(Helper.MODE_STOP);
-                    stackBuilder.addParentStack(MainScreenActivity.class);
-                    stackBuilder.addNextIntent(approve);
-                    PendingIntent approvePendingIntent =
-                            stackBuilder.getPendingIntent(2, PendingIntent.FLAG_CANCEL_CURRENT);
-                    builder.setContentIntent(approvePendingIntent);
-                    NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-                    nm.notify(1, builder.build());
-                }
+                stackBuilder = TaskStackBuilder.create(getBaseContext());
+                notificationHandler(messageStr);
             }
         });
     }
 
+    /**
+     * handler for showing and setting the notifications
+     *
+     * @param messageStr - the message received
+     */
+    private void notificationHandler(String messageStr) {
+        switch (messageStr) {
+            case Helper.REQUEST:  //got a request
+                requestNotificationHandler();
+                break;
+            case Helper.APPROVED:  //user approved search
+                searchApproved();
+                break;
+            case Helper.REFUSE: //refused search
+                refusedSearch();
+                break;
+            case Helper.STOP_SEARCH: //search stopped by other user
+                searchStopped();
+                break;
+        }
+    }
+
+    /**
+     * sets the notification for the search request
+     */
+    private void requestNotificationHandler() {
+        //set clicks
+        setClickAction(APPROVE_TYPE);
+
+        //add data
+        approve.putExtra("to", fromPhone);
+
+        //notification stack init
+        stackBuilder.addParentStack(MainScreenActivity.class);
+        //set click listener on approve button
+        stackBuilder.addNextIntent(approve);
+        initPendingIntent(NOTIFICATION);
+        builder.addAction(NOTIFICATION, Helper.MODE_APPROVE, approvePendingIntent);
+
+        refuse.setAction(Helper.MODE_REFUSE);
+        refuse.putExtra("operation", "message");
+        refuse.putExtra("to", fromPhone);
+        refuse.putExtra("content", Helper.REFUSE);
+        //set click listener on refuse button
+        stackBuilder.addNextIntent(refuse);
+        //init pendingIntents
+        refusePendingIntent =
+                PendingIntent.getService(getBaseContext(), SEARCH_REFUSED, refuse, PendingIntent.FLAG_CANCEL_CURRENT);
+        //set priority
+        builder.setPriority(Notification.PRIORITY_HIGH);
+        //add click actions
+        builder.addAction(NOTIFICATION, Helper.MODE_REFUSE, refusePendingIntent);
+        nm.notify(NOTIFICATION, builder.build());
+    }
+
+    /**
+     * sets the action on click
+     *
+     * @param type the action type
+     */
+    private void setClickAction(int type) {
+        approve.putExtra("loc", type);
+        if (type < STOP_TYPE)
+            approve.setAction(Helper.MODE_APPROVE);
+        else
+            approve.setAction(Helper.MODE_STOP);
+
+    }
+
+    /**
+     * handle search stopped
+     */
+    private void searchStopped() {
+        stopMessage();
+        getApplicationContext().stopService(service);
+        //set click listener on notification
+        inboxStyle.setBigContentTitle("Search Stopped");
+        inboxStyle.addLine("From: " + from);
+        inboxStyle.addLine(Helper.SEARCH_STOPPED);
+        builder.setStyle(inboxStyle);
+        setClickAction(STOP_TYPE);
+        stackBuilder.addParentStack(MainScreenActivity.class);
+        stackBuilder.addNextIntent(approve);
+        nm.notify(SEARCH_STOPPED, builder.build());
+        Helper.sendMessage(context, null, "end", "", memory.getString("session", ""));
+        edit.remove("session");
+    }
+
+    private void searchApproved() {
+        startService(service);
+        //set click listener on notification
+        setClickAction(APPROVED_TYPE);
+        edit.putString("bt_status", "client");
+        Log.d(Helper.BT_TAG, "entering client mode");
+        edit.apply();
+        stackBuilder.addParentStack(MainScreenActivity.class);
+        stackBuilder.addNextIntent(approve);
+        initPendingIntent(SEARCH_APPROVED);
+        builder.setContentIntent(approvePendingIntent);
+        nm.notify(SEARCH_APPROVED, builder.build());
+    }
+
+    private void refusedSearch() {
+        //set click listener on notification
+        inboxStyle.setBigContentTitle("Search Refused");
+        inboxStyle.addLine("From: " + from);
+        inboxStyle.addLine(messageStr);
+        builder.setStyle(inboxStyle);
+        stackBuilder.addParentStack(MainScreenActivity.class);
+        nm.notify(SEARCH_REFUSED, builder.build());
+        Helper.sendMessage(context, null, "end", "", memory.getString("session", ""));
+        edit.remove("session");
+    }
+
+    private void initPendingIntent(int flag) {
+        approvePendingIntent =
+                stackBuilder.getPendingIntent(flag, PendingIntent.FLAG_CANCEL_CURRENT);
+    }
 }

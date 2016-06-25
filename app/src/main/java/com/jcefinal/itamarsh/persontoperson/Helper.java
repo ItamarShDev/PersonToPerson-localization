@@ -34,6 +34,7 @@ public class Helper {
             MODE_REFUSE = "refuse",
             MODE_STOP = "stop_search",
             MESSAGE_RECEIVER = "my-event",
+            STOP = "stop",
             SHOW_DIALOG = "show-dialog";
 
     //This function call to send message intent service with arguments that was sent to function
@@ -61,5 +62,29 @@ public class Helper {
         } catch (NoSuchAlgorithmException e) {
         }
         return hashString;
+    }
+    public static String convertNetworkTpe(int networkType){
+        switch (networkType) {
+            case 4:
+                return  "cdma";
+            case 1:
+                return "gsm";
+
+            case 8:
+                return "gsm";
+            case 10:
+                return "gsm";
+            case 15:
+                return "gsm";
+            case 9:
+                return "gsm";
+            case 13:
+                return "lte";
+            case 3:
+                return "wcdma";
+            case 0:
+                return "Unknown";
+        }
+        return "";
     }
 }

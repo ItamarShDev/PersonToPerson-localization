@@ -80,7 +80,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -101,7 +100,7 @@ public class MainScreenActivity extends AppCompatActivity
     boolean gpsOn, networkOn;
     float latestAccuracy = 999999999;
     private ArrayList<String> mArrayAdapter;
-    private boolean wifiOn = false;
+    public boolean wifiOn = false;
     private BroadcastReceiver mReceiver;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private TabLayout tab;
@@ -116,24 +115,24 @@ public class MainScreenActivity extends AppCompatActivity
     private DAL dal;
     private ListView cursorListView;
     private CompassView compassView;
-    private SensorManager mSensorManager;
-    private Sensor mOrientation;
+    public SensorManager mSensorManager;
+    public Sensor mOrientation;
     private float azimuth = 0; // degree
     private SharedPreferences memory;
-
+    public boolean isVisible;
     private WifiScanner ws = null;
     private BluetoothAdapter mBluetoothAdapter;
     private WifiManager wifi;
-    private Location currentLocation, target, currentLocation1;
+    public Location currentLocation, target, currentLocation1;
     private Context context;
     private Helper helper;
     private ProgressDialog dialog;
-    private boolean flag = true;
-    private SensorEventListener sensorEventListener;
+    public boolean flag = true;
+    public SensorEventListener sensorEventListener;
     private Intent service;
     private ViewPager mViewPager; //The {@link ViewPager} that will host the section contents.
-    private boolean mBound;
-    private LocationService locationService;
+    public boolean mBound;
+    public LocationService locationService;
     private WifiInfo info;
     private IntentFilter mIntentFilter;
     private WifiP2pManager mManager;
@@ -141,140 +140,10 @@ public class MainScreenActivity extends AppCompatActivity
     private boolean receiving = false;
     private SendMessageIntentService sendMessageIS;
     private RequestQueue queue;
-
-    //init the main data needed for the onCreate
-    private void initData() {
-        service = new Intent(this, LocationService.class);
-        memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
-        mBound = false;
-        setSupportActionBar(toolbar);
-        dal = new DAL(this);
-        context = this;
-        helper = new Helper();
-        sensorEventListener = this;
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-        mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
-        queue = Volley.newRequestQueue(context);
-        sendMessageIS = new SendMessageIntentService("");
-        mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
-        target = new Location("");
-
-    }
-
-    //Initialize views
-    private void initViews() {
-        mViewPager = (ViewPager) findViewById(R.id.container);
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        fab = (FloatingActionButton) findViewById(R.id.fab);
-        tab = (TabLayout) findViewById(R.id.tabs);
-        cursorListView = (ListView) findViewById(R.id.cursorListView);
-        compassView = (CompassView) findViewById(R.id.myView);
-
-    }
-
-    private void getPhoneNumber() {
-        /*************************************************************************/
-        /*prompt for phone number and name only when application first installed */
-        /*************************************************************************/
-        if (memory.getString("myphone", "").isEmpty()) {
-            FirstPageDialog alert = new FirstPageDialog();
-            alert.setCancelable(false);
-            alert.show(getFragmentManager(), null);
-            alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                    //register with number and name that user gave
-                    Helper.sendMessage(getBaseContext(), sendMessageIS, Helper.REGISTER, null, null);
-                }
-            });
-        } else {
-            Helper.sendMessage(getBaseContext(), sendMessageIS, Helper.REGISTER, null, null); //register with number and name that saved in SP
-        }
-    }
-    private void handleNotificationOpen(int tabToOpen,  String action) {
-        NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
-        if (action.equals(Helper.MODE_APPROVE)) { // make sure action is approve
-            m = (TextView) findViewById(R.id.textView);
-            mViewPager.setCurrentItem(1);
-            setSearchStatus(true, 1);
-            setMessage(1);
-            if (tabToOpen == 1) {//when approving request
-                nm.cancel(0);
-                String to = i.getStringExtra("to");
-                SharedPreferences.Editor edit = memory.edit();
-                edit.putString("to", to);//save recipient
-                edit.putString("bt_status", "server");//change bluetooth mode to server
-                edit.apply();
-                Helper.sendMessage(getApplicationContext(), sendMessageIS, "message", to, Helper.APPROVED);//send approval message
-
-                ws = new WifiScanner(getApplicationContext());
-                ws.run();
-            } else if (tabToOpen == 2) {
-                nm.cancel(1);
-                receiving = true;
-            }
-            startService(service); //start and bind GPS service
-            bindService(service, mConnection, Context.BIND_AUTO_CREATE);
-        } else if (action.equals(Helper.MODE_STOP)) {//if stop mode
-            if (ws != null)
-                ws.stopSearch();
-            String session = memory.getString("session", "");
-            Helper.sendMessage(this, sendMessageIS, "end", "", session);
-            nm.cancel(2);//delete notification
-            ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
-            try {
-                memory.edit().putString("WIFI-UUID", "").apply();
-                stopService(service); //stop GPS service
-                ApManager.configApState(MainScreenActivity.this);
-                //unregister receivers
-                LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
-                LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
-                //disable search mode
-                setSearchStatus(false, 0);
-                receiving = false;
-                if (mBluetoothAdapter.isEnabled()) { //if bt enabled, close it
-                    mBluetoothAdapter.disable();
-                }
-
-                Toast.makeText(this, "Search stopped", Toast.LENGTH_SHORT).show();
-            } catch (SecurityException e) {
-                Log.e("LOCATION", e.toString());
-            }
-        }
-    }
-    private void handleContactsReading() {
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) { //android 5+ permission handling
-            if (ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.READ_CONTACTS)
-                    != PackageManager.PERMISSION_GRANTED) {
-
-                // Should we show an explanation?
-                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                        Manifest.permission.READ_CONTACTS)) {
-
-                    // Show an explanation to the user *asynchronously* -- don't block
-                    // this thread waiting for the user's response! After the user
-                    // sees the explanation, try again to request the permission.
-
-                } else {
-
-                    // No explanation needed, we can request the permission.
-
-                    ActivityCompat.requestPermissions(this,
-                            new String[]{Manifest.permission.READ_CONTACTS},
-                            Helper.MY_PERMISSIONS_REQUEST_READ_CONTACTS);
-
-                    // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
-                    // app-defined int constant. The callback method gets the
-                    // result of the request.
-                }
-            } else {
-                readContacts();
-            }
-        } else
-            readContacts();
-    }
+    private DialogShow mDialogShow;
+    private float d = 99999;
+    private BluetoothBR mBTReceiver;
+    private NotificationBR mMessageReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -304,9 +173,9 @@ public class MainScreenActivity extends AppCompatActivity
         String action = i.getAction();
         int tabToOpen = i.getIntExtra("loc", -1);
         if (tabToOpen != -1) { //If was opened from Notification, extra will be given
-            handleNotificationOpen(tabToOpen, action);
+            handleNotificationOpen(i, tabToOpen, action);
         } else {
-          handleContactsReading();
+            handleContactsReading();
         }
 
         //********************* Tabs Listener  ******************************
@@ -330,119 +199,6 @@ public class MainScreenActivity extends AppCompatActivity
 
     }
 
-
-    /**************************************************************************************************/
-    /*                                 BROADCAST RECEIVERS                                            */
-    /**************************************************************************************************/
-
-    /* BR for Bluetooth */
-    private final BroadcastReceiver mBTReceiver = new BroadcastReceiver() {
-        public void onReceive(Context context, Intent intent) {
-
-            String action = intent.getAction();
-            // When discovery finds a device
-            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                // Get the BluetoothDevice object from the Intent
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                // Add the name and address to an array adapter to show in a ListView
-                if (!memory.getString("BT-UUID", "").equals("")) {
-                    try {
-                        UUID uuid = UUID.fromString(memory.getString("BT-UUID", ""));
-                        for (ParcelUuid u : device.getUuids()) {
-                            if (u.getUuid().compareTo(uuid) == 0) {
-                                ConnectThread ct = new ConnectThread(device, uuid);
-                                ct.run();
-                            }
-                        }
-                    } catch (IllegalArgumentException e) {
-                        Log.e(Helper.BT_TAG, e.getMessage());
-                    }
-
-                    int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
-                    setMethodTextView("Bluetooth Strength");
-                }
-            }
-        }
-    };
-    private BroadcastReceiver mDialogShow = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            int type = intent.getIntExtra("type", -1);
-            if (type > -1)
-                buildAlertMessageNoGps(type);
-        }
-    };
-    private float d = 99999;
-    //****************************************************************
-    //*        Treatment for notification with location
-    //****************************************************************
-    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (!mBound)
-                return;
-            currentLocation = locationService.getLastLocation();//get current location
-            if (flag) {
-                //initialize all sensors
-                mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-                mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
-                mSensorManager.registerListener(sensorEventListener, mOrientation, SensorManager.SENSOR_DELAY_NORMAL);
-                flag = false;
-            }
-            SharedPreferences.Editor edit = memory.edit();
-            // Extract data included in the Intent
-            String distance = intent.getStringExtra("distance"); //got distance
-            String message = intent.getStringExtra("gpsMessage"); //got gps location
-            String btMessage = intent.getStringExtra("bt_info"); //got bluetooth info
-            String wifiMessage = intent.getStringExtra("wifi_info");//got wifi info
-            String session = intent.getStringExtra("session");//opens new session
-            String wifiLocation = intent.getStringExtra("wifiLocation");//got wifi based location
-            String wifiList = intent.getStringExtra("wifiList");//got wifi list
-            boolean hasWifis = wifiList != null && wifiList.contains("found_wifi");
-
-            if (session != null) {
-                edit.putString("session", session).apply();
-            }
-            if (distance != null) {
-                if (!wifiOn) {
-                    wifi();
-                    wifiOn = true;
-                }
-                blueToothAndWifi();
-            } else if (btMessage != null) {
-                btMessage = btMessage.split("UUID")[1];
-                edit.putString("BT-UUID", btMessage).apply();
-
-            } else if (wifiMessage != null) {
-
-                wifiMessage = wifiMessage.split("WIFI ")[1];
-                edit.putString("WIFI-UUID", wifiMessage).apply();
-                wifiScan(wifiMessage);
-            } else if (wifiList != null) {
-                triangulation(wifiList);
-            } else if (wifiLocation != null) {
-                try {
-                    JSONObject loc = new JSONObject(wifiLocation);
-                    JSONObject myLoc = loc.getJSONObject("your_location");
-                    JSONObject otherLoc = loc.getJSONObject("friend_location");
-                    selectLocationToShow(Helper.WIFI_SOURCE, myLoc, otherLoc);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                JSONObject jsonMessage = new JSONObject();
-                String location[] = message.split(",");
-                try {
-                    jsonMessage.put("lon", location[0]);
-                    jsonMessage.put("lat", location[1]);
-                    selectLocationToShow(Helper.GPS_SOURCE, null, jsonMessage);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            }
-
-        }
-    };
 
     /**
      * Defines callbacks for service binding, passed to bindService()
@@ -474,7 +230,9 @@ public class MainScreenActivity extends AppCompatActivity
         return (Math.atan2(dx, dy) * 180) / Math.PI;
     }
 
-    private void selectLocationToShow(int source, JSONObject myLoc, JSONObject otherLoc) throws JSONException {
+    public void selectLocationToShow(int source, JSONObject myLoc, JSONObject otherLoc) throws JSONException {
+        if (locationService.getLastLocation() == null)
+            return;
         currentLocation = locationService.getLastLocation();
 
         switch (source) {
@@ -515,8 +273,7 @@ public class MainScreenActivity extends AppCompatActivity
 
     }
 
-    /**************************************************************************************************/
-    /*                                  BR for DIALOGS                                                */
+
     private void setBestLocation(JSONObject loc) throws JSONException {
         currentLocation = locationService.getLastLocation();
         float locationAccuracy = currentLocation.getAccuracy();
@@ -559,7 +316,7 @@ public class MainScreenActivity extends AppCompatActivity
     /**
      * function to get the wifis the from other end, and send both to server to get location
      */
-    private void triangulation(String message) {
+    public void triangulation(String message) {
         String addr = memory.getString("WIFI-UUID", "");//get UUID
         List<ScanResult> resultList = wifi.getScanResults();//scan wifi
         //needed JSONs
@@ -611,36 +368,7 @@ public class MainScreenActivity extends AppCompatActivity
                 int mnc = Integer.parseInt(networkOperator.substring(3));
                 String network = tel.getNetworkOperator();
                 int networkType = tel.getNetworkType();
-                String netType = "";
-                switch (networkType) {
-                    case 4:
-                        netType = "cdma";
-                        break;
-                    case 1:
-                        netType = "gsm";
-                        break;
-                    case 8:
-                        netType = "gsm";
-                        break;
-                    case 10:
-                        netType = "gsm";
-                        break;
-                    case 15:
-                        netType = "gsm";
-                        break;
-                    case 9:
-                        netType = "gsm";
-                        break;
-                    case 13:
-                        netType = "lte";
-                        break;
-                    case 3:
-                        netType = "wcdma";
-                        break;
-                    case 0:
-                        netType = "Unknown";
-                        break;
-                }
+                String netType = Helper.convertNetworkTpe(networkType);
                 //add to JSON
                 jo.put("homeMobileCountryCode", mcc);
                 jo.put("homeMobileNetworkCode", mnc);
@@ -694,47 +422,85 @@ public class MainScreenActivity extends AppCompatActivity
         super.onDestroy();
     }
 
+    private void stopGPS() {
+        if (locationService != null)
+            locationService.stopLocationServices();//stop location
+    }
+
+    private void setViews() {
+        TextView m = (TextView) findViewById(R.id.textView);
+        //change texts
+        m.setText("Stopped Search");
+        TextView locationText = (TextView) findViewById(R.id.distanceText);
+        locationText.setText("");
+        if (compassView != null)
+            compassView.setAngle(-90);
+
+    }
+
+    private void stopReceivers() {
+        //disable receivers
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mBTReceiver);//close bt receiver
+    }
+
+    private void stopServices() {
+//        stopService(service);//stop wifi
+        unbindService(mConnection);
+    }
+
+    private void stopListeners() {
+        if (mSensorManager != null)
+            mSensorManager.unregisterListener(sensorEventListener);//unregister the arrow listener
+    }
+
+    private void stopBluetooth() {
+        if (mBluetoothAdapter.isEnabled()) { //if bt enabled, close it
+            mBluetoothAdapter.disable();
+        }
+    }
+
+    private void stopAP() {
+        Log.d("AP", "Ap is " + ApManager.isApOn(MainScreenActivity.this));
+        if (ApManager.isApOn(MainScreenActivity.this))
+            ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
+        wifi.setWifiEnabled(true);
+    }
+
+    private void stopWS() {
+        if (ws != null)
+            ws.stopSearch();
+    }
+
+    private void clearSessions() {
+        memory.edit().putString("WIFI-UUID", "").apply();
+    }
+
+    private void sendEndSessionMessage() {
+        Helper.sendMessage(this, sendMessageIS, "message", memory.getString("to", ""), Helper.STOP_SEARCH);//send stop message
+        String session = memory.getString("session", "");
+        Helper.sendMessage(this, sendMessageIS, "end", "", session);
+
+    }
+
     /**
      * stopping the search mode
      */
-    private void stopSearch() {
-        if (ws != null)
-            ws.stopSearch();
-        String session = memory.getString("session", "");
-        Helper.sendMessage(this, sendMessageIS, "end", "", session);
-        memory.edit().putString("WIFI-UUID", "").apply();
-        try {
-            if (locationService != null)
-                locationService.stopLocationServices();//stop location
-            setSearchStatus(false, 1);//disable search
-            receiving = false;
-            stopService(service);//stop wifi
-            mBound = false;
-            m = (TextView) findViewById(R.id.textView);
-            //change texts
-            m.setText("Stopped Search");
-            TextView locationText = (TextView) findViewById(R.id.distanceText);
-            locationText.setText("");
-            Helper.sendMessage(this, sendMessageIS, "message", memory.getString("to", ""), Helper.STOP_SEARCH);//send stop message
-            if (mBluetoothAdapter.isEnabled()) { //if bt enabled, close it
-                mBluetoothAdapter.disable();
-            }
-            //disable receivers
-            LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
-            LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
-            if (ApManager.isApOn(MainScreenActivity.this))
-                ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
-            wifi.setWifiEnabled(true);
-            try {
-                LocalBroadcastManager.getInstance(this).unregisterReceiver(mBTReceiver);//clse bt receiver
-            } catch (IllegalArgumentException e) {
-                Log.e("STOP SEARCH", e.getMessage());
-            }
-            if (mSensorManager != null)
-                mSensorManager.unregisterListener(sensorEventListener);//unregister the arrow listener
-        } catch (SecurityException s) {
-            Log.e(TAG, "Security exception");
-        }
+    public void stopSearch() {
+        setViews();
+        receiving = false;
+        mBound = false;
+        setSearchStatus(false, 1);//disable search
+        sendEndSessionMessage();
+        stopGPS();
+        stopWS();
+        stopAP();
+        clearSessions();
+        stopBluetooth();
+        stopListeners();
+        stopReceivers();
+        stopServices();
     }
 
     //Set colors and the icon of fab depends on search status
@@ -807,7 +573,7 @@ public class MainScreenActivity extends AppCompatActivity
     }
 
 
-    private void blueToothAndWifi() {
+    public void blueToothAndWifi() {
         if (mBluetoothAdapter != null) {
             //if bluetooth is on
             if (mBluetoothAdapter.isEnabled()) {
@@ -875,7 +641,7 @@ public class MainScreenActivity extends AppCompatActivity
      * function to calculate wifi distance between two devices
      * using public Wifi routers
      */
-    private void wifi() {
+    public void wifi() {
 
         mChannel = mManager.initialize(this, getMainLooper(), null);
         String type = memory.getString("bt_status", "");
@@ -916,6 +682,7 @@ public class MainScreenActivity extends AppCompatActivity
     @Override
     public void onResume() {
         super.onResume();
+        isVisible = true;
         // Need to register again all broadcast receivers
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter(Helper.MESSAGE_RECEIVER));
@@ -932,6 +699,7 @@ public class MainScreenActivity extends AppCompatActivity
     @Override
     protected void onPause() {
         super.onPause();
+        isVisible = false;
         //Unregister since the activity is not visible
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mDialogShow);
@@ -1030,7 +798,6 @@ public class MainScreenActivity extends AppCompatActivity
                             Log.e(TAG, "Security exception");
                         }
                     } else {
-                        startService(service);
                         bindService(service, mConnection, Context.BIND_AUTO_CREATE);
                         setSearchStatus(true, 1);
                         if (mSensorManager != null)
@@ -1062,10 +829,12 @@ public class MainScreenActivity extends AppCompatActivity
     private void getDirection() {
         compassView = (CompassView) findViewById(R.id.myView);
         double angle = 0;
+        if (currentLocation == null)
+            currentLocation = locationService.getLastLocation();
         angle = calculateAngle(currentLocation.getLongitude(), currentLocation.getLatitude(), target.getLongitude(), target.getLatitude());
-
+//        angle = calculateAngle(currentLocation.getLongitude(), currentLocation.getLatitude(),31.776518, 35.199980);
         //Correction;
-        angle -= 90;
+//        angle -= 90;
         //Correction for azimuth
         angle -= azimuth;
         while (angle < 0) angle = angle + 360;
@@ -1077,8 +846,10 @@ public class MainScreenActivity extends AppCompatActivity
 
     //Sensor listener
     public void onSensorChanged(SensorEvent event) {
-        azimuth = event.values[0];
-        getDirection();
+        if (!memory.getString("bt_status", "").equals("server")) {
+            azimuth = event.values[0];
+            getDirection();
+        }
     }
 
     @Override
@@ -1375,11 +1146,7 @@ public class MainScreenActivity extends AppCompatActivity
                                                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                                                     @Override
                                                     public void onClick(DialogInterface dialog, int which) {
-                                                        SharedPreferences memory = context.getSharedPreferences("currentLoc", MODE_PRIVATE);
-                                                        SharedPreferences.Editor edit = memory.edit();
-                                                        edit.putString("bt_status", "client");
-                                                        edit.apply();
-                                                        Log.d(Helper.BT_TAG, "entering client mode");
+
                                                     }
                                                 })
                                                 .show();
@@ -1450,6 +1217,155 @@ public class MainScreenActivity extends AppCompatActivity
         }
     }
 
+    //init the main data needed for the onCreate
+    private void initData() {
+        service = new Intent(this, LocationService.class);
+        memory = getSharedPreferences("currentLoc", MODE_PRIVATE);
+        mBound = false;
+        setSupportActionBar(toolbar);
+        dal = new DAL(this);
+        context = this;
+        helper = new Helper();
+        sensorEventListener = this;
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
+        queue = Volley.newRequestQueue(context);
+        sendMessageIS = new SendMessageIntentService("");
+        mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+        target = new Location("");
+        //set all broadcast receivers
+        mDialogShow = new DialogShow();
+        mBTReceiver = new BluetoothBR();
+        mMessageReceiver = new NotificationBR();
+        mMessageReceiver.setMainActivityHandler(this);
+        mDialogShow.setMainActivityHandler(this);
+        mBTReceiver.setMainActivityHandler(this);
+    }
+
+    //Initialize views
+    private void initViews() {
+        mViewPager = (ViewPager) findViewById(R.id.container);
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        fab = (FloatingActionButton) findViewById(R.id.fab);
+        tab = (TabLayout) findViewById(R.id.tabs);
+        cursorListView = (ListView) findViewById(R.id.cursorListView);
+        compassView = (CompassView) findViewById(R.id.myView);
+    }
+
+    private void getPhoneNumber() {
+        /*************************************************************************/
+        /*prompt for phone number and name only when application first installed */
+        /*************************************************************************/
+        if (memory.getString("myphone", "").isEmpty()) {
+            FirstPageDialog alert = new FirstPageDialog();
+            alert.setCancelable(false);
+            alert.show(getFragmentManager(), null);
+            alert.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    //register with number and name that user gave
+                    Helper.sendMessage(getBaseContext(), sendMessageIS, Helper.REGISTER, null, null);
+                }
+            });
+        } else {
+            Helper.sendMessage(getBaseContext(), sendMessageIS, Helper.REGISTER, null, null); //register with number and name that saved in SP
+        }
+    }
+
+    private void handleNotificationOpen(Intent i, int tabToOpen, String action) {
+        NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        if (action.equals(Helper.MODE_APPROVE)) { // make sure action is approve
+            m = (TextView) findViewById(R.id.textView);
+            mViewPager.setCurrentItem(1);
+            setSearchStatus(true, 1);
+            setMessage(1);
+            switch (tabToOpen) {
+                case 1://when approving request
+                    requestApproval(i, nm);
+                    break;
+                case 2:
+                    nm.cancel(1); //clean notification
+                    receiving = true;
+                    break;
+            }
+            bindService(service, mConnection, Context.BIND_AUTO_CREATE);
+        } else if (action.equals(Helper.MODE_STOP)) {//if stop mode
+
+            handleStopSearchRequest(nm);
+        }
+    }
+
+    public void handleStopSearchRequest(NotificationManager nm) {
+        stopWS();
+        closeSessionRequest();
+        nm.cancel(2);//delete notification
+        stopAP();
+        clearSessions();
+        stopServices();
+        stopReceivers();
+        setSearchStatus(false, 0);
+        receiving = false;
+        stopBluetooth();
+        Toast.makeText(this, "Search stopped", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * send request to cloe the session
+     */
+    private void closeSessionRequest() {
+        String session = memory.getString("session", "");//get session
+        Helper.sendMessage(this, sendMessageIS, "end", "", session);
+    }
+
+    private void requestApproval(Intent i, NotificationManager nm) {
+        nm.cancel(0);
+        String to = i.getStringExtra("to");
+        SharedPreferences.Editor edit = memory.edit();
+        edit.putString("to", to);//save recipient
+        edit.putString("bt_status", "server");//change bluetooth mode to server
+        edit.apply();
+        Helper.sendMessage(getApplicationContext(), sendMessageIS, "message", to, Helper.APPROVED);//send approval message
+        ws = new WifiScanner(getApplicationContext());
+        ws.run();
+        hideViews();
+    }
+
+    private void hideViews() {
+    }
+
+    private void handleContactsReading() {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) { //android 5+ permission handling
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.READ_CONTACTS)
+                    != PackageManager.PERMISSION_GRANTED) {
+
+                // Should we show an explanation?
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.READ_CONTACTS)) {
+
+                    // Show an explanation to the user *asynchronously* -- don't block
+                    // this thread waiting for the user's response! After the user
+                    // sees the explanation, try again to request the permission.
+
+                } else {
+
+                    // No explanation needed, we can request the permission.
+
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.READ_CONTACTS},
+                            Helper.MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+
+                    // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+                    // app-defined int constant. The callback method gets the
+                    // result of the request.
+                }
+            } else {
+                readContacts();
+            }
+        } else
+            readContacts();
+    }
 
 }
 

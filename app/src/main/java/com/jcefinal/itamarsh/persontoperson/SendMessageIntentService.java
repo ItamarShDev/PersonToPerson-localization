@@ -89,7 +89,11 @@ public class SendMessageIntentService extends IntentService {
                     @Override
                     public void onResponse(JSONObject response) {
                         try {
-                            String res = response.getString("response"); // get response data
+                            if(response.has("session")){
+                                String session = response.getString("session");
+                                memory.edit().putString("session", session).apply();
+                                Log.d("MEMORY", "session "+session);
+                            }
 
                         } catch (JSONException e) {
                             Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer - Error on response " + e.getMessage());
@@ -101,7 +105,8 @@ public class SendMessageIntentService extends IntentService {
                     public void onErrorResponse(VolleyError error) {
                         try {//handle error
                             error.getStackTrace();
-                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService -SendToServer Got " + error.networkResponse);
+                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - SendToServer for " +serverAddr );
+                            Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - SendToServer Got " + error.networkResponse);
                             Log.e(Helper.CONNECTION_TAG, "IN SendMessageIntentService - " + error.getLocalizedMessage());
 
                         } catch (NullPointerException e) {

@@ -39,14 +39,16 @@ public class CompassView extends View {
     private void init(AttributeSet attrs, int defStyle, Context context)
     {
         paint = new Paint();
-        paint.setColor(Color.RED);
+        paint.setColor(Color.BLUE);
         paint.setStyle(Paint.Style.FILL);
         path = new Path();
-        angle = 0;
+        angle = -90;
 
     }
 
-
+    public void setAngle(int angle){
+        this.angle = angle;
+    }
     //Function to treat size changing
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
