@@ -637,7 +637,7 @@ public class MainScreenActivity extends AppCompatActivity
             }
         }
     }
-    //wifi scanner actiovation
+    //wifi scanner activation
     public void wifiScan(final String wifiBSSID) {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         ScheduledFuture<?> result = scheduler.scheduleAtFixedRate
