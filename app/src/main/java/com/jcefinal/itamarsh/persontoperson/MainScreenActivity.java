@@ -230,6 +230,13 @@ public class MainScreenActivity extends AppCompatActivity
         return (Math.atan2(dx, dy) * 180) / Math.PI;
     }
 
+    /**
+     * sets the location according to the requested method
+     * @param source the method
+     * @param myLoc the location JSON
+     * @param otherLoc the other party's location JSON
+     * @throws JSONException
+     */
     public void selectLocationToShow(int source, JSONObject myLoc, JSONObject otherLoc) throws JSONException {
         if (locationService.getLastLocation() == null)
             return;
@@ -266,6 +273,11 @@ public class MainScreenActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * set the target as Wi-Fi
+     * @param loc the location to set as JSN
+     * @throws JSONException
+     */
     private void setTargetToWifi(JSONObject loc) throws JSONException {
         target.setLongitude(Float.valueOf(loc.getString("lon")));
         target.setLatitude(Float.valueOf(loc.getString("lat")));
@@ -273,7 +285,11 @@ public class MainScreenActivity extends AppCompatActivity
 
     }
 
-
+    /**
+     * select most accurate location between GPS and Wi-Fi
+     * @param loc the Wi-Fi location JSON
+     * @throws JSONException
+     */
     private void setBestLocation(JSONObject loc) throws JSONException {
         currentLocation = locationService.getLastLocation();
         float locationAccuracy = currentLocation.getAccuracy();
@@ -289,6 +305,9 @@ public class MainScreenActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * the the location views on screen
+     */
     private void updateLocationView() {
         d = currentLocation.distanceTo(target);
         JSONObject js = new JSONObject();
@@ -312,9 +331,21 @@ public class MainScreenActivity extends AppCompatActivity
         String loc = "Accuracy: " + accuracy + "m";
         m.setText(loc);
     }
+    public void setDistanceTextView(float distance) {
+        TextView tv1 = (TextView) findViewById(R.id.distanceText);
+        String s = String.format("%.2f", distance);
+
+        String dString = "Approx Distance: " + s + " m";
+        tv1.setText(dString);
+    }
+    public void setMethodTextView(String method) {
+        TextView tv1 = (TextView) findViewById(R.id.textView3);
+        tv1.setText(method);
+    }
 
     /**
      * function to get the wifis the from other end, and send both to server to get location
+     * @param message the wifis
      */
     public void triangulation(String message) {
         String addr = memory.getString("WIFI-UUID", "");//get UUID
@@ -404,19 +435,6 @@ public class MainScreenActivity extends AppCompatActivity
 
     }
 
-    public void setDistanceTextView(float distance) {
-        TextView tv1 = (TextView) findViewById(R.id.distanceText);
-        String s = String.format("%.2f", distance);
-
-        String dString = "Approx Distance: " + s + " m";
-        tv1.setText(dString);
-    }
-
-    public void setMethodTextView(String method) {
-        TextView tv1 = (TextView) findViewById(R.id.textView3);
-        tv1.setText(method);
-    }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -426,7 +444,7 @@ public class MainScreenActivity extends AppCompatActivity
         if (locationService != null)
             locationService.stopLocationServices();//stop location
     }
-
+    //set views to search stopped
     private void setViews() {
         TextView m = (TextView) findViewById(R.id.textView);
         //change texts
@@ -460,23 +478,23 @@ public class MainScreenActivity extends AppCompatActivity
             mBluetoothAdapter.disable();
         }
     }
-
+        //stop wifi access points
     private void stopAP() {
         Log.d("AP", "Ap is " + ApManager.isApOn(MainScreenActivity.this));
         if (ApManager.isApOn(MainScreenActivity.this))
             ApManager.configApState(MainScreenActivity.this); // change Ap state :boolean
         wifi.setWifiEnabled(true);
     }
-
+    //stop wifi scanner
     private void stopWS() {
         if (ws != null)
             ws.stopSearch();
     }
-
+    //clear session from the memory
     private void clearSessions() {
         memory.edit().putString("WIFI-UUID", "").apply();
     }
-
+    // send to server end message
     private void sendEndSessionMessage() {
         Helper.sendMessage(this, sendMessageIS, "message", memory.getString("to", ""), Helper.STOP_SEARCH);//send stop message
         String session = memory.getString("session", "");
@@ -503,7 +521,11 @@ public class MainScreenActivity extends AppCompatActivity
         stopServices();
     }
 
-    //Set colors and the icon of fab depends on search status
+    /**
+     * Set colors and the icon of fab depends on search status
+     * @param status the new search status
+     * @param tab the tab to affect
+     */
     private void setSearchStatus(boolean status, int tab) {
         if (tab == 0) {
             setFloatingActionButtonColors(fab, colorIntArray[BLUE], colorIntArray[PINK], iconIntArray[ADD]);
@@ -571,8 +593,7 @@ public class MainScreenActivity extends AppCompatActivity
         }
 
     }
-
-
+    //use Bluetooth RSSI method
     public void blueToothAndWifi() {
         if (mBluetoothAdapter != null) {
             //if bluetooth is on
@@ -616,7 +637,7 @@ public class MainScreenActivity extends AppCompatActivity
             }
         }
     }
-
+    //wifi scanner actiovation
     public void wifiScan(final String wifiBSSID) {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         ScheduledFuture<?> result = scheduler.scheduleAtFixedRate
@@ -639,7 +660,7 @@ public class MainScreenActivity extends AppCompatActivity
 
     /**
      * function to calculate wifi distance between two devices
-     * using public Wifi routers
+     * using public Wifi RSSI
      */
     public void wifi() {
 
@@ -1252,7 +1273,7 @@ public class MainScreenActivity extends AppCompatActivity
         cursorListView = (ListView) findViewById(R.id.cursorListView);
         compassView = (CompassView) findViewById(R.id.myView);
     }
-
+    //get user's phone
     private void getPhoneNumber() {
         /*************************************************************************/
         /*prompt for phone number and name only when application first installed */
@@ -1273,6 +1294,12 @@ public class MainScreenActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * handles the notification clicks, opening the search or main page
+     * @param i the calling intent
+     * @param tabToOpen the tab to be opened to
+     * @param action the notification we got
+     */
     private void handleNotificationOpen(Intent i, int tabToOpen, String action) {
         NotificationManager nm = (NotificationManager) getBaseContext().getSystemService(Context.NOTIFICATION_SERVICE);
         if (action.equals(Helper.MODE_APPROVE)) { // make sure action is approve
@@ -1296,6 +1323,10 @@ public class MainScreenActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * closes the search when other user requested
+     * @param nm the notification
+     */
     public void handleStopSearchRequest(NotificationManager nm) {
         stopWS();
         closeSessionRequest();
@@ -1311,13 +1342,18 @@ public class MainScreenActivity extends AppCompatActivity
     }
 
     /**
-     * send request to cloe the session
+     * send request to close the session
      */
     private void closeSessionRequest() {
         String session = memory.getString("session", "");//get session
         Helper.sendMessage(this, sendMessageIS, "end", "", session);
     }
 
+    /**
+     * handles the approval by entering server mode and sending an approval message
+     * @param i the calling intent
+     * @param nm the notification pressed
+     */
     private void requestApproval(Intent i, NotificationManager nm) {
         nm.cancel(0);
         String to = i.getStringExtra("to");
@@ -1328,11 +1364,8 @@ public class MainScreenActivity extends AppCompatActivity
         Helper.sendMessage(getApplicationContext(), sendMessageIS, "message", to, Helper.APPROVED);//send approval message
         ws = new WifiScanner(getApplicationContext());
         ws.run();
-        hideViews();
     }
 
-    private void hideViews() {
-    }
 
     private void handleContactsReading() {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) { //android 5+ permission handling
